@@ -1,0 +1,633 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Classical Music Recognition Quiz</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        body {
+            background: linear-gradient(135deg, #1a2a6c, #b21f1f, #fdbb2d);
+            color: white;
+            min-height: 100vh;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        
+        .container {
+            max-width: 800px;
+            width: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+            margin-top: 20px;
+        }
+        
+        h1 {
+            text-align: center;
+            margin-bottom: 20px;
+            font-size: 2.5rem;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+        }
+        
+        .instructions {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 25px;
+            line-height: 1.6;
+        }
+        
+        .file-input-section {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin-bottom: 30px;
+        }
+        
+        .file-input-label {
+            background: #4a90e2;
+            color: white;
+            padding: 12px 25px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.3s;
+            display: inline-block;
+            margin-bottom: 15px;
+            text-align: center;
+        }
+        
+        .file-input-label:hover {
+            background: #357ae8;
+            transform: translateY(-2px);
+        }
+        
+        #file-input {
+            display: none;
+        }
+        
+        .file-count {
+            margin-top: 10px;
+            font-size: 0.9rem;
+            color: #ccc;
+        }
+        
+        .demo-section {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        
+        .demo-btn {
+            background: #4a90e2;
+            color: white;
+            border: none;
+            padding: 12px 25px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1.1rem;
+            font-weight: bold;
+            transition: all 0.3s;
+            margin-top: 10px;
+        }
+        
+        .demo-btn:hover {
+            background: #357ae8;
+            transform: translateY(-2px);
+        }
+        
+        .quiz-section {
+            display: none;
+        }
+        
+        .audio-player {
+            display: flex;
+            justify-content: center;
+            margin: 25px 0;
+        }
+        
+        .audio-player button {
+            background: #ff5722;
+            color: white;
+            border: none;
+            padding: 12px 25px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1.1rem;
+            font-weight: bold;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .audio-player button:hover {
+            background: #e64a19;
+            transform: scale(1.05);
+        }
+        
+        .options-section {
+            margin: 25px 0;
+        }
+        
+        .options-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 10px;
+        }
+        
+        .option-btn {
+            padding: 12px 15px;
+            border-radius: 8px;
+            border: 2px solid #4a90e2;
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: all 0.3s;
+            text-align: left;
+        }
+        
+        .option-btn:hover {
+            background: rgba(255, 255, 255, 0.2);
+            transform: translateY(-2px);
+        }
+        
+        .option-btn.correct {
+            background: rgba(76, 175, 80, 0.3);
+            border-color: #4caf50;
+        }
+        
+        .option-btn.incorrect {
+            background: rgba(244, 67, 54, 0.3);
+            border-color: #f44336;
+        }
+        
+        .feedback {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 8px;
+            text-align: center;
+            font-weight: bold;
+            min-height: 60px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .correct-feedback {
+            background: rgba(76, 175, 80, 0.3);
+            border: 2px solid #4caf50;
+        }
+        
+        .incorrect-feedback {
+            background: rgba(244, 67, 54, 0.3);
+            border: 2px solid #f44336;
+        }
+        
+        .stats {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 20px;
+            padding: 15px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+        }
+        
+        .progress-bar {
+            width: 100%;
+            height: 10px;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 5px;
+            margin-top: 10px;
+            overflow: hidden;
+        }
+        
+        .progress {
+            height: 100%;
+            background: #4caf50;
+            width: 0%;
+            transition: width 0.5s;
+        }
+        
+        .results {
+            display: none;
+            text-align: center;
+            padding: 20px;
+        }
+        
+        .results h2 {
+            margin-bottom: 20px;
+            font-size: 2rem;
+        }
+        
+        .score {
+            font-size: 3rem;
+            font-weight: bold;
+            margin: 20px 0;
+            color: #4caf50;
+        }
+        
+        .restart-btn {
+            background: #4a90e2;
+            color: white;
+            border: none;
+            padding: 12px 25px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1.1rem;
+            font-weight: bold;
+            transition: all 0.3s;
+            margin-top: 20px;
+        }
+        
+        .restart-btn:hover {
+            background: #357ae8;
+            transform: scale(1.05);
+        }
+        
+        @media (min-width: 600px) {
+            .options-grid {
+                grid-template-columns: 1fr 1fr;
+            }
+        }
+        
+        @media (max-width: 600px) {
+            .container {
+                padding: 15px;
+            }
+            
+            h1 {
+                font-size: 2rem;
+            }
+            
+            .stats {
+                flex-direction: column;
+                gap: 10px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <h1>Sebastian Blue's Amazing Music Class Prep Tool</h1>
+        
+        <div class="file-input-section">
+            <label for="file-input" class="file-input-label">Select Music Files</label>
+            <input type="file" id="file-input" accept="audio/*" multiple>
+            <div class="file-count" id="file-count">No files selected</div>
+        </div>
+        
+        <div class="demo-section">
+            <button class="demo-btn" id="demo-btn">Try Demo First</button>
+        </div>
+        
+        <div class="quiz-section" id="quiz-section">
+            <div class="stats">
+                <div>Progress: <span id="progress-text">0/0</span></div>
+                <div>Score: <span id="score">0</span></div>
+            </div>
+            
+            <div class="progress-bar">
+                <div class="progress" id="progress-bar"></div>
+            </div>
+            
+            <div class="audio-player">
+                <button id="play-btn">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="white">
+                        <path d="M8 5v14l11-7z"/>
+                    </svg>
+                    Play Music
+                </button>
+            </div>
+            
+            <div class="options-section">
+                <div class="options-grid" id="options-container">
+                    <!-- Options will be generated here -->
+                </div>
+            </div>
+            
+            <div class="feedback" id="feedback"></div>
+        </div>
+        
+        <div class="results" id="results">
+            <h2>Quiz Complete!</h2>
+            <div class="score" id="final-score">0%</div>
+            <p id="result-message">Great job! You know your music well.</p>
+            <button class="restart-btn" id="restart-btn">Try Again</button>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // DOM elements
+            const fileInput = document.getElementById('file-input');
+            const fileCount = document.getElementById('file-count');
+            const demoBtn = document.getElementById('demo-btn');
+            const quizSection = document.getElementById('quiz-section');
+            const playBtn = document.getElementById('play-btn');
+            const optionsContainer = document.getElementById('options-container');
+            const feedback = document.getElementById('feedback');
+            const progressText = document.getElementById('progress-text');
+            const scoreElement = document.getElementById('score');
+            const progressBar = document.getElementById('progress-bar');
+            const results = document.getElementById('results');
+            const finalScore = document.getElementById('final-score');
+            const resultMessage = document.getElementById('result-message');
+            const restartBtn = document.getElementById('restart-btn');
+            
+            // Quiz state
+            let audioFiles = [];
+            let currentAudioIndex = 0;
+            let score = 0;
+            let currentAudio = null;
+            let optionButtons = [];
+            
+            // Sample music data for the demo
+            const sampleMusic = [
+                { name: "Douce dame jolie", composer: "Guillaume de Machaut", period: "Medieval" },
+                { name: "Ave Maria...virgo serena", composer: "Josquin des Prez", period: "Renaissance" },
+                { name: "Sumer is icumen in", composer: "Anonymous", period: "Medieval" },
+                { name: "Can vei la lauzeta mover", composer: "Bernart de Ventadorn", period: "Medieval" },
+                { name: "Viderunt omnes", composer: "Léonin", period: "Medieval" },
+                { name: "Hoquetus David", composer: "Guillaume de Machaut", period: "Medieval" },
+                { name: "Ja nuns hons pris ne dirar", composer: "Richard the Lionheart", period: "Medieval" },
+                { name: "O rubor sanguinis", composer: "Hildegard von Bingen", period: "Medieval" }
+            ];
+            
+            // Event listeners
+            fileInput.addEventListener('change', handleFileSelection);
+            demoBtn.addEventListener('click', startDemoQuiz);
+            playBtn.addEventListener('click', playCurrentAudio);
+            restartBtn.addEventListener('click', restartQuiz);
+            
+            // Functions
+            function handleFileSelection(e) {
+                const files = e.target.files;
+                if (files.length === 0) return;
+                
+                audioFiles = Array.from(files);
+                fileCount.textContent = `${audioFiles.length} file(s) selected`;
+                
+                // Hide demo button
+                demoBtn.style.display = 'none';
+                
+                // Shuffle the files for random order
+                shuffleArray(audioFiles);
+                
+                // Start the quiz
+                startQuiz();
+            }
+            
+            function startDemoQuiz() {
+                // Use sample music for the demo
+                audioFiles = sampleMusic.map((music, index) => {
+                    return {
+                        name: `${index + 1}-${music.name}.mp3`,
+                        displayName: music.name,
+                        composer: music.composer,
+                        period: music.period
+                    };
+                });
+                
+                // Hide demo button and file input
+                demoBtn.style.display = 'none';
+                document.querySelector('.file-input-section').style.display = 'none';
+                
+                startQuiz();
+            }
+            
+            function shuffleArray(array) {
+                for (let i = array.length - 1; i > 0; i--) {
+                    const j = Math.floor(Math.random() * (i + 1));
+                    [array[i], array[j]] = [array[j], array[i]];
+                }
+            }
+            
+            function startQuiz() {
+                quizSection.style.display = 'block';
+                currentAudioIndex = 0;
+                score = 0;
+                updateProgress();
+                loadCurrentAudio();
+            }
+            
+            function loadCurrentAudio() {
+                if (currentAudio) {
+                    currentAudio.pause();
+                    if (currentAudio.src && currentAudio.src.startsWith('blob:')) {
+                        URL.revokeObjectURL(currentAudio.src);
+                    }
+                }
+                
+                const file = audioFiles[currentAudioIndex];
+                
+                // Check if it's a real file or a demo item
+                if (file instanceof File) {
+                    // Real file - create an object URL
+                    currentAudio = new Audio(URL.createObjectURL(file));
+                } else {
+                    // Demo item - create a dummy audio element
+                    currentAudio = new Audio();
+                    // We'll handle demo playback differently
+                }
+                
+                // Reset UI
+                feedback.textContent = '';
+                feedback.className = 'feedback';
+                
+                // Generate options
+                generateOptions();
+            }
+            
+            function playCurrentAudio() {
+                const file = audioFiles[currentAudioIndex];
+                
+                // Check if it's a real file or a demo item
+                if (file instanceof File) {
+                    // Real file - play normally
+                    if (currentAudio) {
+                        currentAudio.play().catch(e => {
+                            feedback.textContent = "Error playing audio. Please try again.";
+                            feedback.className = "feedback incorrect-feedback";
+                        });
+                    }
+                } else {
+                    // Demo item - show a message instead of playing
+                    feedback.textContent = `Now playing: ${file.displayName} (Demo)`;
+                    feedback.className = "feedback correct-feedback";
+                    
+                    // Simulate audio playback time
+                    setTimeout(() => {
+                        if (feedback.textContent.includes("Now playing")) {
+                            feedback.textContent = "Audio finished. Make your selection!";
+                            feedback.className = "feedback";
+                        }
+                    }, 3000);
+                }
+            }
+            
+            function generateOptions() {
+                // Clear previous options
+                optionsContainer.innerHTML = '';
+                optionButtons = [];
+                
+                // Get the correct answer
+                let correctAnswer;
+                if (audioFiles[currentAudioIndex] instanceof File) {
+                    correctAnswer = formatFileName(audioFiles[currentAudioIndex].name);
+                } else {
+                    correctAnswer = audioFiles[currentAudioIndex].displayName;
+                }
+                
+                // Create an array of all possible answers
+                const allAnswers = audioFiles.map(file => {
+                    if (file instanceof File) {
+                        return formatFileName(file.name);
+                    } else {
+                        return file.displayName;
+                    }
+                });
+                
+                // Shuffle the answers
+                const shuffledAnswers = [...allAnswers];
+                shuffleArray(shuffledAnswers);
+                
+                // Create option buttons
+                shuffledAnswers.forEach(answer => {
+                    const button = document.createElement('button');
+                    button.className = 'option-btn';
+                    button.textContent = answer;
+                    button.addEventListener('click', () => checkAnswer(answer, correctAnswer, button));
+                    optionsContainer.appendChild(button);
+                    optionButtons.push(button);
+                });
+            }
+            
+            function formatFileName(fileName) {
+                // Remove file extension
+                let name = fileName.replace(/\.[^/.]+$/, "");
+                
+                // Remove track numbers and "Wright no." prefix for cleaner display
+                name = name.replace(/^\d+-\d+\s+Wright no\. \d+_?\s*/, '');
+                name = name.replace(/^\d+\s*-\s*/, '');
+                
+                return name;
+            }
+            
+            function checkAnswer(selectedAnswer, correctAnswer, button) {
+                // Disable all option buttons
+                optionButtons.forEach(btn => {
+                    btn.disabled = true;
+                });
+                
+                if (selectedAnswer === correctAnswer) {
+                    // Correct answer
+                    score++;
+                    button.classList.add('correct');
+                    feedback.textContent = "Correct! Well done!";
+                    feedback.className = "feedback correct-feedback";
+                    
+                    // Show additional info if available
+                    const currentPiece = audioFiles[currentAudioIndex];
+                    if (currentPiece.composer) {
+                        setTimeout(() => {
+                            feedback.innerHTML = `
+                                <div>
+                                    <strong>Correct!</strong><br>
+                                    Composer: ${currentPiece.composer}<br>
+                                    Period: ${currentPiece.period}
+                                </div>
+                            `;
+                        }, 1500);
+                    }
+                } else {
+                    // Incorrect answer
+                    button.classList.add('incorrect');
+                    feedback.textContent = `Incorrect. The correct answer was: ${correctAnswer}`;
+                    feedback.className = "feedback incorrect-feedback";
+                    
+                    // Highlight the correct answer
+                    optionButtons.forEach(btn => {
+                        if (btn.textContent === correctAnswer) {
+                            btn.classList.add('correct');
+                        }
+                    });
+                    
+                    // Show additional info if available
+                    const currentPiece = audioFiles[currentAudioIndex];
+                    if (currentPiece.composer) {
+                        setTimeout(() => {
+                            feedback.innerHTML = `
+                                <div>
+                                    <strong>Incorrect.</strong> The correct answer was: ${correctAnswer}<br>
+                                    ${currentPiece.composer ? `Composer: ${currentPiece.composer}<br>` : ''}
+                                    ${currentPiece.period ? `Period: ${currentPiece.period}` : ''}
+                                </div>
+                            `;
+                        }, 1500);
+                    }
+                }
+                
+                // Update score and progress
+                updateProgress();
+                
+                // Move to next question or finish quiz
+                setTimeout(() => {
+                    currentAudioIndex++;
+                    
+                    if (currentAudioIndex < audioFiles.length) {
+                        loadCurrentAudio();
+                    } else {
+                        finishQuiz();
+                    }
+                }, 3500);
+            }
+            
+            function updateProgress() {
+                progressText.textContent = `${currentAudioIndex + 1}/${audioFiles.length}`;
+                scoreElement.textContent = score;
+                
+                const progressPercentage = ((currentAudioIndex + 1) / audioFiles.length) * 100;
+                progressBar.style.width = `${progressPercentage}%`;
+            }
+            
+            function finishQuiz() {
+                quizSection.style.display = 'none';
+                results.style.display = 'block';
+                
+                const percentage = Math.round((score / audioFiles.length) * 100);
+                finalScore.textContent = `${percentage}%`;
+                
+                if (percentage >= 90) {
+                    resultMessage.textContent = "Outstanding! You're a classical music expert!";
+                } else if (percentage >= 70) {
+                    resultMessage.textContent = "Great job! You know your classical music well.";
+                } else if (percentage >= 50) {
+                    resultMessage.textContent = "Good effort! Keep studying these pieces.";
+                } else {
+                    resultMessage.textContent = "Keep practicing! You'll get better with time.";
+                }
+            }
+            
+            function restartQuiz() {
+                results.style.display = 'none';
+                quizSection.style.display = 'none';
+                demoBtn.style.display = 'inline-block';
+                document.querySelector('.file-input-section').style.display = 'flex';
+                fileInput.value = '';
+                fileCount.textContent = 'No files selected';
+                audioFiles = [];
+            }
+        });
+    </script>
+</body>
+</html>
