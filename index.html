@@ -23,7 +23,7 @@
         }
         
         .container {
-            max-width: 800px;
+            max-width: 900px;
             width: 100%;
             background: rgba(0, 0, 0, 0.7);
             border-radius: 15px;
@@ -74,7 +74,7 @@
             display: flex;
             flex-direction: column;
             align-items: center;
-            margin-bottom: 30px;
+            margin-bottom: 15px;
         }
         
         .file-input-label {
@@ -100,9 +100,24 @@
         }
         
         .file-count {
-            margin-top: 10px;
+            margin-top: 5px;
             font-size: 0.9rem;
             color: #ccc;
+        }
+
+        .scan-report {
+            margin: 10px 0 20px 0;
+            font-size: 0.9rem;
+            color: #ffeb3b;
+        }
+
+        .scan-report ul {
+            margin-top: 5px;
+            padding-left: 20px;
+        }
+
+        .scan-report li {
+            margin-bottom: 3px;
         }
         
         .demo-section {
@@ -167,6 +182,12 @@
         .audio-player button.secondary:hover {
             background: #5a6268;
         }
+
+        .audio-player button.secondary:disabled {
+            opacity: 0.5;
+            transform: none;
+            cursor: default;
+        }
         
         .options-section {
             margin: 25px 0;
@@ -184,7 +205,7 @@
             border: 2px solid #4a90e2;
             background: rgba(255, 255, 255, 0.1);
             color: white;
-            font-size: 1rem;
+            font-size: 0.9rem;
             cursor: pointer;
             transition: all 0.3s;
             text-align: left;
@@ -227,6 +248,22 @@
             border: 1px solid rgba(255, 255, 255, 0.3);
             background: rgba(0, 0, 0, 0.4);
             color: #fff;
+        }
+
+        .composer-year-container label {
+            display: block;
+            margin-bottom: 4px;
+            font-size: 0.9rem;
+        }
+
+        .composer-year-container select {
+            width: 100%;
+            padding: 8px 10px;
+            border-radius: 6px;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            background: rgba(0, 0, 0, 0.4);
+            color: #fff;
+            margin-bottom: 10px;
         }
 
         .composer-year-container button {
@@ -274,6 +311,9 @@
             padding: 15px;
             background: rgba(255, 255, 255, 0.1);
             border-radius: 8px;
+            flex-wrap: wrap;
+            gap: 10px;
+            font-size: 0.95rem;
         }
         
         .progress-bar {
@@ -392,7 +432,7 @@
                 <select id="mode-select">
                     <option value="title">Multiple choice: piece title</option>
                     <option value="composer-year">Type: composer + year</option>
-                    <option value="full">Full drill: title + composer + year (/3)</option>
+                    <option value="full">Full drill: title + composer + year + style (/4)</option>
                 </select>
             </div>
         </div>
@@ -402,6 +442,8 @@
             <input type="file" id="file-input" accept="audio/*" multiple>
             <div class="file-count" id="file-count">No files selected</div>
         </div>
+
+        <div id="scan-report" class="scan-report"></div>
         
         <div class="demo-section">
             <button class="demo-btn" id="demo-btn">Try Demo First</button>
@@ -431,6 +473,9 @@
                     </svg>
                     Skip to Middle
                 </button>
+                <button id="next-btn" class="secondary" disabled>
+                    Next Piece
+                </button>
             </div>
             
             <div class="options-section">
@@ -439,9 +484,32 @@
                 </div>
 
                 <div class="composer-year-container" id="composer-year-container">
-                    <p>Type the <strong>composer</strong> and <strong>year</strong> for this piece:</p>
+                    <p>
+                        Type the <strong>composer</strong> and <strong>year</strong>, and (in full mode) choose the <strong>style</strong>:
+                    </p>
                     <input type="text" id="composer-input" placeholder="Composer (e.g., Josquin des Prez)">
                     <input type="text" id="year-input" placeholder="Year (e.g., 1503)">
+                    <label for="style-select">Style (only scored in full mode):</label>
+                    <select id="style-select">
+                        <option value="">-- choose style (optional) --</option>
+                        <option value="chanson">Chanson</option>
+                        <option value="carol">Carol</option>
+                        <option value="motet">Motet</option>
+                        <option value="mass">Mass</option>
+                        <option value="madrigal">Madrigal</option>
+                        <option value="chorale">Chorale</option>
+                        <option value="anthem">Anthem</option>
+                        <option value="ayre">Ayre (lute song)</option>
+                        <option value="canzona">Canzona</option>
+                        <option value="fantasia">Fantasia</option>
+                        <option value="pavane">Pavane</option>
+                        <option value="galliard">Galliard</option>
+                        <option value="round">Round / canon</option>
+                        <option value="dance">Instrumental dance</option>
+                        <option value="carnival song">Carnival song / lauda</option>
+                        <option value="lied">Lied / Tenorlied</option>
+                        <option value="tune">Tune</option>
+                    </select>
                     <button id="submit-composer-year">Submit Answer</button>
                 </div>
             </div>
@@ -463,16 +531,20 @@
 
     <script>
         document.addEventListener('DOMContentLoaded', function() {
+            // ===== DOM elements =====
             const fileInput = document.getElementById('file-input');
             const fileCount = document.getElementById('file-count');
+            const scanReport = document.getElementById('scan-report');
             const demoBtn = document.getElementById('demo-btn');
             const quizSection = document.getElementById('quiz-section');
             const playBtn = document.getElementById('play-btn');
             const skipBtn = document.getElementById('skip-btn');
+            const nextBtn = document.getElementById('next-btn');
             const optionsContainer = document.getElementById('options-container');
             const composerYearContainer = document.getElementById('composer-year-container');
             const composerInput = document.getElementById('composer-input');
             const yearInput = document.getElementById('year-input');
+            const styleSelect = document.getElementById('style-select');
             const submitComposerYearBtn = document.getElementById('submit-composer-year');
             const feedback = document.getElementById('feedback');
             const progressText = document.getElementById('progress-text');
@@ -489,24 +561,28 @@
             const randomStartCheckbox = document.getElementById('random-start');
             const reviewMissedCheckbox = document.getElementById('review-missed');
             const modeSelect = document.getElementById('mode-select');
-        
-            // ===== State =====
+            
+            // ===== Quiz state =====
             let audioFiles = [];
             let currentAudioIndex = 0;
-            let score = 0;
-            let totalPossiblePoints = 0;
-            let missedCount = 0;
             let currentAudio = null;
-            let optionButtons = [];
+
+            let score = 0;               // total points earned
+            let totalPossiblePoints = 0; // max points so far
+            let answeredCount = 0;       // how many questions fully graded
+            let missedCount = 0;         // how many questions had something wrong
+
             let missedPieces = [];
             let isReviewRound = false;
-            let quizMode = modeSelect ? modeSelect.value : 'title';
+            let quizMode = modeSelect.value;
             let questionLocked = false;
+
+            let optionButtons = [];
+            let selectedTitle = null;
             let currentCorrectInfo = null;
             let currentCorrectTitleAnswer = "";
-            let selectedTitle = null;
-        
-            // Demo sample data
+
+            // ===== Sample music for demo mode =====
             const sampleMusic = [
                 { name: "Douce dame jolie", composer: "Guillaume de Machaut", period: "Medieval" },
                 { name: "Ave Maria...virgo serena", composer: "Josquin des Prez", period: "Renaissance" },
@@ -517,101 +593,393 @@
                 { name: "Ja nuns hons pris ne dirat", composer: "Richard the Lionheart", period: "Medieval" },
                 { name: "O rubor sanguinis", composer: "Hildegard von Bingen", period: "Medieval" }
             ];
-        
-            // ===== Helpers: parsing & matching =====
-            function inferPeriodFromYear(year) {
-                const y = parseInt(year, 10);
-                if (isNaN(y)) return "";
+
+            // ===== Canonical exam titles =====
+            const EXAM_TITLES = [
+                "Adieu ces bons vins de Lannoy",
+                "Agincourt Carol",
+                "Alma redemptoris mater",
+                "As Vesta Was from Latmos Hill Descending",
+                "Ave Maria",
+                "Ave Maria...virgo serena",
+                "Canzona 5",
+                "Cruda, Amarilli",
+                "De profundis clamavi",
+                "Deuil angoisseus",
+                "Ein feste Burg ist unser Gott",
+                "Fantasia",
+                "Flow my tears",
+                "Galliard",
+                "Giesu, sommo conforto",
+                "Il bianco e dolce cigno",
+                "In illo tempore loquente Jesu",
+                "Innsbruck, ich muss dich lassen",
+                "Je ne puis vivre ainsy toujours",
+                "L’homme armé",
+                "La Spagna",
+                "Lux solempnis/Repleti sunt",
+                "Miserere mei, deus",
+                "Missa Benedicta es celorum regina",
+                "Missa Caput",
+                "Missa Hercules dux Ferrarie",
+                "Missa L’homme armé",
+                "Missa L’homme armé super voces musicales",
+                "Missa Prolationum",
+                "Moro, lasso",
+                "Nuper rosarum flores",
+                "O Lord, Make thy servant, Elizabeth",
+                "Pastyme with Good Companye",
+                "Pavane",
+                "Prenez sur moy",
+                "Quam pulchra es",
+                "Resveilles vous",
+                "Salve regina",
+                "S’elle m’amera/Petite camusette",
+                "Sumer is icumen in",
+                "Tant que vivray",
+                "Verbum bonum et suave",
+                "Vultum tuum"
+            ];
+
+            // Map normalized title key -> canonical title string
+            const TITLE_OVERRIDES = {};
+            EXAM_TITLES.forEach(t => {
+                TITLE_OVERRIDES[normalizeKey(t)] = t;
+            });
+
+            // Style overrides per (canonical) title
+            const STYLE_OVERRIDES = {
+                [normalizeKey("Adieu ces bons vins de Lannoy")]: "chanson",
+                [normalizeKey("Agincourt Carol")]: "carol",
+                [normalizeKey("Alma redemptoris mater")]: "motet",
+                [normalizeKey("As Vesta Was from Latmos Hill Descending")]: "madrigal",
+                [normalizeKey("Ave Maria")]: "motet",
+                [normalizeKey("Ave Maria...virgo serena")]: "motet",
+                [normalizeKey("Canzona 5")]: "canzona",
+                [normalizeKey("Cruda, Amarilli")]: "madrigal",
+                [normalizeKey("De profundis clamavi")]: "motet",
+                [normalizeKey("Deuil angoisseus")]: "chanson",
+                [normalizeKey("Ein feste Burg ist unser Gott")]: "chorale",
+                [normalizeKey("Fantasia")]: "fantasia",
+                [normalizeKey("Flow my tears")]: "ayre",
+                [normalizeKey("Galliard")]: "galliard",
+                [normalizeKey("Giesu, sommo conforto")]: "carnival song",
+                [normalizeKey("Il bianco e dolce cigno")]: "madrigal",
+                [normalizeKey("In illo tempore loquente Jesu")]: "motet",
+                [normalizeKey("Innsbruck, ich muss dich lassen")]: "lied",
+                [normalizeKey("Je ne puis vivre ainsy toujours")]: "chanson",
+                [normalizeKey("L’homme armé")]: "tune",
+                [normalizeKey("La Spagna")]: "dance",
+                [normalizeKey("Lux solempnis/Repleti sunt")]: "motet",
+                [normalizeKey("Miserere mei, deus")]: "motet",
+                [normalizeKey("Missa Benedicta es celorum regina")]: "mass",
+                [normalizeKey("Missa Caput")]: "mass",
+                [normalizeKey("Missa Hercules dux Ferrarie")]: "mass",
+                [normalizeKey("Missa L’homme armé")]: "mass",
+                [normalizeKey("Missa L’homme armé super voces musicales")]: "mass",
+                [normalizeKey("Missa Prolationum")]: "mass",
+                [normalizeKey("Moro, lasso")]: "madrigal",
+                [normalizeKey("Nuper rosarum flores")]: "motet",
+                [normalizeKey("O Lord, Make thy servant, Elizabeth")]: "anthem",
+                [normalizeKey("Pastyme with Good Companye")]: "part song",
+                [normalizeKey("Pavane")]: "pavane",
+                [normalizeKey("Prenez sur moy")]: "chanson",
+                [normalizeKey("Quam pulchra es")]: "motet",
+                [normalizeKey("Resveilles vous")]: "chanson",
+                [normalizeKey("Salve regina")]: "motet",
+                [normalizeKey("S’elle m’amera/Petite camusette")]: "chanson",
+                [normalizeKey("Sumer is icumen in")]: "round",
+                [normalizeKey("Tant que vivray")]: "chanson",
+                [normalizeKey("Verbum bonum et suave")]: "motet",
+                [normalizeKey("Vultum tuum")]: "motet"
+            };
+
+            // ===== Helper functions =====
+            function normalizeKey(str) {
+                return (str || "")
+                    .toLowerCase()
+                    .normalize("NFD")
+                    .replace(/[\u0300-\u036f]/g, "")
+                    .replace(/[^a-z0-9]+/g, "");
+            }
+
+            function inferPeriodFromYearNumber(y) {
+                if (!y || isNaN(y)) return "";
                 if (y < 1400) return "Medieval";
                 if (y < 1600) return "Renaissance";
                 if (y < 1750) return "Baroque";
                 return "";
             }
-        
-            // Parse things like:
-            //  - 1560_Orlande de Lassus_De profundis clamavi.m4a
-            //  - c1490_Josquin_Vultum tuum...
-            //  - 1590s_Palestrina_Missa Benedicta...
+
+            function parseYearToken(token) {
+                if (!token) return null;
+                let t = token.toLowerCase().trim();
+                t = t.replace(/^c\.?/,"");
+                t = t.replace(/^ca\.?/,"");
+                if (t.endsWith("s") && t.length >= 4) {
+                    t = t.slice(0, -1);
+                }
+                const num = parseInt(t, 10);
+                if (isNaN(num)) return null;
+                return num;
+            }
+
+            // Parse filename into {title, composer, yearLabel, yearNumeric, period, style, displayName}
             function parseMusicInfoFromName(fileName) {
                 let withoutExt = fileName.replace(/\.[^/.]+$/, "");
                 let base = withoutExt.trim();
-        
-                // strip old Wright-type prefixes if present
+
+                // Remove any Wright-style prefixes if they ever sneak in
                 base = base.replace(/^\d+-\d+\s+Wright no\. \d+_?\s*/, "");
                 base = base.replace(/^\d+\s*-\s*/, "");
-        
-                let year = null;
+
+                const parts = base.split("_");
+                let yearLabel = null;
+                let yearNumeric = null;
                 let composer = "";
-                let title = "";
-                let period = "";
-        
-                const firstUnd = base.indexOf("_");
-        
-                if (firstUnd === -1) {
-                    // no underscores at all, just treat whole thing as title
-                    title = base.replace(/_/g, " ").trim();
+                let titleRaw = "";
+
+                if (parts.length === 1) {
+                    titleRaw = parts[0];
                 } else {
-                    const firstPart = base.slice(0, firstUnd);      // "1560", "c1490", "1590s", or composer-first
-                    const rest = base.slice(firstUnd + 1);          // "Josquin_...", "Palestrina_...", etc.
-        
-                    // 1) numeric year, e.g. "1560"
-                    if (/^\d{3,4}$/.test(firstPart)) {
-                        year = firstPart;
+                    const possibleYearToken = parts[0];
+                    const num = parseYearToken(possibleYearToken);
+                    if (num !== null) {
+                        yearLabel = possibleYearToken;
+                        yearNumeric = num;
+                        composer = (parts[1] || "").trim();
+                        titleRaw = parts.slice(2).join(" ");
                     } else {
-                        // 2) circa / decade forms like "c1490", "c1490s", "1590s"
-                        const circaMatch = firstPart.match(/^c?(\d{3,4})s?$/i);
-                        if (circaMatch) {
-                            year = circaMatch[1]; // just keep the digits (e.g. "1490", "1590")
-                        } else if (/^year$/i.test(firstPart)) {
-                            // placeholder, no year info
-                            year = null;
-                        } else {
-                            // 3) composer-first style (no year)
-                            composer = firstPart.replace(/_/g, " ").trim();
-                            title = rest.replace(/_/g, " ").trim();
-                            if (year) period = inferPeriodFromYear(year);
-                            const displayTitle = title || base.replace(/_/g, " ").trim();
-                            return {
-                                year,
-                                composer,
-                                title: displayTitle,
-                                period,
-                                displayName:
-                                    displayTitle +
-                                    (composer ? ` — ${composer}` : "") +
-                                    (year ? ` (${year})` : "")
-                            };
-                        }
-                    }
-        
-                    // parse composer + title from the rest
-                    const secondUnd = rest.indexOf("_");
-                    if (secondUnd === -1) {
-                        composer = rest.replace(/_/g, " ").trim();
-                    } else {
-                        composer = rest.slice(0, secondUnd).replace(/_/g, " ").trim();
-                        const rest2 = rest.slice(secondUnd + 1);
-                        title = rest2.replace(/_/g, " ").trim();
+                        composer = parts[0].trim();
+                        titleRaw = parts.slice(1).join(" ");
                     }
                 }
-        
-                if (!title) {
-                    title = base.replace(/_/g, " ").trim();
+
+                titleRaw = titleRaw.replace(/_/g, " ").trim();
+
+                // Strip trailing style / instrumentation hints from the title itself
+                // e.g. "Flow my tears ayre" -> "Flow my tears"
+                const STRIP_PATTERNS = [
+                    /ayre$/i,
+                    /madrigal$/i,
+                    /motet$/i,
+                    /anthem$/i,
+                    /chorale$/i,
+                    /guitar solo$/i,
+                    /4-voice setting$/i,
+                    /Summer Canon$/i,
+                    /VOICE \+ LUTE$/i,
+                    /LUTE$/i,
+                    /KEYBOARD$/i,
+                    /part song$/i,
+                    /tune.*$/i,
+                    /dissonant madrigal$/i
+                ];
+                STRIP_PATTERNS.forEach(re => {
+                    if (re.test(titleRaw)) {
+                        titleRaw = titleRaw.replace(re, "").trim();
+                    }
+                });
+
+                // Special mass / multi-movement cleanup
+                let cleanTitle = titleRaw;
+
+                // Normalize spaces
+                cleanTitle = cleanTitle.replace(/\s+/g, " ");
+
+                // Mass movement → whole mass
+                if (/missa\s+l.?homme\s+arme/i.test(cleanTitle)) {
+                    if (/super voces/i.test(cleanTitle)) {
+                        cleanTitle = "Missa L’homme armé super voces musicales";
+                    } else if (/sexti toni/i.test(cleanTitle)) {
+                        cleanTitle = "Missa L’homme armé sexti toni";
+                    } else {
+                        cleanTitle = "Missa L’homme armé";
+                    }
+                } else if (/missa\s+benedicta/i.test(cleanTitle)) {
+                    cleanTitle = "Missa Benedicta es celorum regina";
+                } else if (/missa\s+caput/i.test(cleanTitle)) {
+                    cleanTitle = "Missa Caput";
+                } else if (/missa\s+hercules/i.test(cleanTitle)) {
+                    cleanTitle = "Missa Hercules dux Ferrarie";
+                } else if (/missa\s+prolationum/i.test(cleanTitle)) {
+                    cleanTitle = "Missa Prolationum";
                 }
-        
-                if (year) {
-                    period = inferPeriodFromYear(year);
+
+                // Vultum tuum multi-movement titles
+                if (/^vultum tuum/i.test(cleanTitle)) {
+                    cleanTitle = "Vultum tuum";
                 }
-        
-                const displayTitle = title;
-                const displayName =
-                    displayTitle +
-                    (composer ? ` — ${composer}` : "") +
-                    (year ? ` (${year})` : "");
-        
-                return { year, composer, title: displayTitle, period, displayName };
+
+                // In illo tempore
+                if (/in illo tempore loquente/i.test(cleanTitle)) {
+                    cleanTitle = "In illo tempore loquente Jesu";
+                }
+
+                // Cruda Amarilli spelling
+                if (/^cruda.? amarilli/i.test(cleanTitle)) {
+                    cleanTitle = "Cruda, Amarilli";
+                }
+
+                // Canzona 5
+                if (/canz[oz]ona 5/i.test(cleanTitle)) {
+                    cleanTitle = "Canzona 5";
+                }
+
+                // Fantasia guitar solo => Fantasia
+                if (/fantasia/i.test(cleanTitle)) {
+                    cleanTitle = "Fantasia";
+                }
+
+                // Flow my tears
+                if (/^flow my tears/i.test(cleanTitle)) {
+                    cleanTitle = "Flow my tears";
+                }
+
+                // Galliard
+                if (/galliard/i.test(cleanTitle)) {
+                    cleanTitle = "Galliard";
+                }
+
+                // Pavane
+                if (/pavane/i.test(cleanTitle)) {
+                    cleanTitle = "Pavane";
+                }
+
+                // Ein feste Burg...
+                if (/ein feste burg/i.test(cleanTitle)) {
+                    cleanTitle = "Ein feste Burg ist unser Gott";
+                }
+
+                // Lux solemnis/Repleti sunt
+                if (/lux solempnis/i.test(cleanTitle)) {
+                    cleanTitle = "Lux solempnis/Repleti sunt";
+                }
+
+                // De profundis
+                if (/de profundis/i.test(cleanTitle)) {
+                    cleanTitle = "De profundis clamavi";
+                }
+
+                // Giesu sommo conforto
+                if (/gies[uù],?\s*sommo conforto/i.test(cleanTitle)) {
+                    cleanTitle = "Giesu, sommo conforto";
+                }
+
+                // Il bianco e dolce cigno
+                if (/il bianco e dolce cigno/i.test(cleanTitle)) {
+                    cleanTitle = "Il bianco e dolce cigno";
+                }
+
+                // Innsbruck
+                if (/innsbruck,? ich muss dich lassen/i.test(cleanTitle)) {
+                    cleanTitle = "Innsbruck, ich muss dich lassen";
+                }
+
+                // Je ne puis vivre
+                if (/je ne puis vivre/i.test(cleanTitle)) {
+                    cleanTitle = "Je ne puis vivre ainsy toujours";
+                }
+
+                // L'homme armé tune
+                if (/l.?homme arme/i.test(cleanTitle) && /tune/i.test(titleRaw)) {
+                    cleanTitle = "L’homme armé";
+                }
+
+                // La Spagna
+                if (/la spagna/i.test(cleanTitle)) {
+                    cleanTitle = "La Spagna";
+                }
+
+                // Nuper rosarum flores
+                if (/nuper rosarum flores/i.test(cleanTitle)) {
+                    cleanTitle = "Nuper rosarum flores";
+                }
+
+                // O Lord, make thy servant
+                if (/o lord,? make thy servant/i.test(cleanTitle)) {
+                    cleanTitle = "O Lord, Make thy servant, Elizabeth";
+                }
+
+                // Pastyme with Good Companye
+                if (/pastyme with good companye/i.test(cleanTitle)) {
+                    cleanTitle = "Pastyme with Good Companye";
+                }
+
+                // Prenez sur moy
+                if (/prenez sur moy/i.test(cleanTitle)) {
+                    cleanTitle = "Prenez sur moy";
+                }
+
+                // Quam pulchra es
+                if (/quam pulchra es/i.test(cleanTitle)) {
+                    cleanTitle = "Quam pulchra es";
+                }
+
+                // Resvellies vous
+                if (/resvellies vous|resvellies vous et faites chiere lye/i.test(cleanTitle)) {
+                    cleanTitle = "Resveilles vous";
+                }
+
+                // Salve regina
+                if (/salve regina/i.test(cleanTitle)) {
+                    cleanTitle = "Salve regina";
+                }
+
+                // S'elle m'amera / Petite camusette
+                if (/s.?elle m.?amera/i.test(cleanTitle) || /petite camusette/i.test(cleanTitle)) {
+                    cleanTitle = "S’elle m’amera/Petite camusette";
+                }
+
+                // Sumer is icumen in
+                if (/sumer is icumen in/i.test(cleanTitle)) {
+                    cleanTitle = "Sumer is icumen in";
+                }
+
+                // Tant que vivray
+                if (/tant que vivray/i.test(cleanTitle)) {
+                    cleanTitle = "Tant que vivray";
+                }
+
+                // Verbum bonum et suave
+                if (/verbum bonum et suave/i.test(cleanTitle)) {
+                    cleanTitle = "Verbum bonum et suave";
+                }
+
+                // Ave Maria variants
+                if (/ave maria\.\.\./i.test(cleanTitle)) {
+                    cleanTitle = "Ave Maria...virgo serena";
+                } else if (/ave maria/i.test(cleanTitle)) {
+                    cleanTitle = "Ave Maria";
+                }
+
+                // Deuil angoisseus
+                if (/deuil angoisseus/i.test(cleanTitle)) {
+                    cleanTitle = "Deuil angoisseus";
+                }
+
+                // Final canonicalization: map to exact exam title if present
+                const key = normalizeKey(cleanTitle);
+                const canonicalTitle = TITLE_OVERRIDES[key] || cleanTitle;
+
+                // Style from overrides, if we know it
+                const style = STYLE_OVERRIDES[key] || "";
+
+                const period = yearNumeric ? inferPeriodFromYearNumber(yearNumeric) : "";
+
+                const displayName = canonicalTitle;
+
+                return {
+                    title: canonicalTitle,
+                    composer,
+                    yearLabel,
+                    yearNumeric,
+                    period,
+                    style,
+                    displayName
+                };
             }
-        
+
             function getMusicInfo(item) {
                 if (item instanceof File) {
                     return parseMusicInfoFromName(item.name);
@@ -619,56 +987,65 @@
                     const title = item.displayName || item.name || "";
                     const composer = item.composer || "";
                     const period = item.period || "";
+                    const key = normalizeKey(title);
+                    const canonical = TITLE_OVERRIDES[key] || title;
+                    const style = STYLE_OVERRIDES[key] || "";
                     return {
-                        year: null,
+                        title: canonical,
                         composer,
-                        title,
+                        yearLabel: null,
+                        yearNumeric: null,
                         period,
-                        displayName: composer ? `${title} — ${composer}` : title
+                        style,
+                        displayName: canonical
                     };
                 } else {
                     return {
-                        year: null,
-                        composer: "",
                         title: "",
+                        composer: "",
+                        yearLabel: null,
+                        yearNumeric: null,
                         period: "",
+                        style: "",
                         displayName: ""
                     };
                 }
             }
-        
-            function normalizeName(str) {
-                return (str || "")
-                    .toLowerCase()
-                    .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
-                    .replace(/[^a-z]/g, "");
-            }
-        
-            // lets "Josquin" == "Josquin des Prez", "DuFay" == "Du Fay", "Anon" == "Anonymous"
+
             function composerMatches(input, expected) {
-                const a = normalizeName(input);
-                const b = normalizeName(expected);
+                const a = normalizeKey(input);
+                const b = normalizeKey(expected);
                 if (!a || !b) return false;
                 if (a === b) return true;
                 return (b.includes(a) || a.includes(b)) && a.length >= 3;
             }
-        
+
             function shuffleArray(array) {
                 for (let i = array.length - 1; i > 0; i--) {
                     const j = Math.floor(Math.random() * (i + 1));
                     [array[i], array[j]] = [array[j], array[i]];
                 }
             }
-        
+
             function registerQuestionResult(pointsEarned, maxPointsForQuestion) {
                 score += pointsEarned;
                 totalPossiblePoints += maxPointsForQuestion;
+                answeredCount++;
                 updateProgress();
             }
-        
+
+            function updateProgress() {
+                const total = audioFiles.length || 0;
+                progressText.textContent = `${answeredCount}/${total}`;
+                scoreElement.textContent = score;
+                missedCountElement.textContent = missedCount;
+
+                const pct = total > 0 ? (answeredCount / total) * 100 : 0;
+                progressBar.style.width = `${pct}%`;
+            }
+
             function updateModeUI() {
-                quizMode = modeSelect ? modeSelect.value : 'title';
-        
+                quizMode = modeSelect.value;
                 if (quizMode === 'title') {
                     optionsContainer.style.display = 'grid';
                     composerYearContainer.style.display = 'none';
@@ -680,7 +1057,52 @@
                     composerYearContainer.style.display = 'block';
                 }
             }
-        
+
+            function resetInputsForNewQuestion() {
+                feedback.textContent = '';
+                feedback.className = 'feedback';
+                composerInput.value = '';
+                yearInput.value = '';
+                styleSelect.value = '';
+                submitComposerYearBtn.disabled = false;
+                selectedTitle = null;
+                questionLocked = false;
+                nextBtn.disabled = true;
+            }
+
+            function scanFilesForProblems() {
+                if (audioFiles.length === 0) {
+                    scanReport.textContent = "";
+                    return;
+                }
+                if (!(audioFiles[0] instanceof File)) {
+                    // demo mode; skip scan
+                    scanReport.textContent = "";
+                    return;
+                }
+
+                const problems = [];
+                audioFiles.forEach((file, idx) => {
+                    const info = getMusicInfo(file);
+                    const name = file.name || `Item ${idx + 1}`;
+                    const issues = [];
+                    if (!info.title) issues.push("no title");
+                    if (!info.composer) issues.push("no composer");
+                    if (!info.yearLabel && !info.yearNumeric) issues.push("no year");
+                    if (issues.length > 0) {
+                        problems.push(`${name}: ${issues.join(", ")}`);
+                    }
+                });
+
+                if (problems.length === 0) {
+                    scanReport.textContent = "All files parsed with title, composer, and year.";
+                } else {
+                    scanReport.innerHTML = "<strong>Note:</strong> Some files are missing info (composer/year/title) and won't be fully graded:<ul>" +
+                        problems.map(p => `<li>${p}</li>`).join("") +
+                        "</ul>";
+                }
+            }
+
             // ===== Event listeners =====
             fileInput.addEventListener('change', handleFileSelection);
             demoBtn.addEventListener('click', startDemoQuiz);
@@ -688,7 +1110,15 @@
             skipBtn.addEventListener('click', skipToMiddle);
             restartBtn.addEventListener('click', restartQuiz);
             reviewBtn.addEventListener('click', startReviewRound);
-        
+            nextBtn.addEventListener('click', () => {
+                if (!questionLocked) {
+                    feedback.textContent = "Make a guess before moving on (or this question won't be graded).";
+                    feedback.className = "feedback incorrect-feedback";
+                    return;
+                }
+                nextQuestion();
+            });
+
             submitComposerYearBtn.addEventListener('click', () => {
                 if (quizMode === 'composer-year') {
                     checkComposerYearAnswer();
@@ -696,10 +1126,11 @@
                     checkFullAnswer();
                 }
             });
-        
+
             composerInput.addEventListener('keydown', handleComposerYearKey);
             yearInput.addEventListener('keydown', handleComposerYearKey);
-        
+            styleSelect.addEventListener('keydown', handleComposerYearKey);
+
             function handleComposerYearKey(e) {
                 if (e.key === 'Enter') {
                     e.preventDefault();
@@ -710,30 +1141,28 @@
                     }
                 }
             }
-        
-            if (modeSelect) {
-                modeSelect.addEventListener('change', () => {
-                    if (!quizSection.style.display || quizSection.style.display === 'none') {
-                        updateModeUI();
-                    }
-                });
-            }
-        
+
+            modeSelect.addEventListener('change', () => {
+                if (!quizSection.style.display || quizSection.style.display === 'none') {
+                    updateModeUI();
+                }
+            });
+
             updateModeUI();
-        
-            // ===== Core flow =====
+
+            // ===== Core quiz logic =====
             function handleFileSelection(e) {
                 const files = e.target.files;
                 if (!files || files.length === 0) return;
-        
+                
                 audioFiles = Array.from(files);
                 fileCount.textContent = `${audioFiles.length} file(s) selected`;
                 demoBtn.style.display = 'none';
-        
                 shuffleArray(audioFiles);
+                scanFilesForProblems();
                 startQuiz();
             }
-        
+            
             function startDemoQuiz() {
                 audioFiles = sampleMusic.map((music, index) => {
                     return {
@@ -743,51 +1172,50 @@
                         period: music.period
                     };
                 });
-        
+                
                 demoBtn.style.display = 'none';
                 document.querySelector('.file-input-section').style.display = 'none';
+                scanReport.textContent = "";
                 startQuiz();
             }
-        
+            
             function startQuiz() {
-                quizMode = modeSelect ? modeSelect.value : 'title';
+                quizMode = modeSelect.value;
                 updateModeUI();
-                if (modeSelect) modeSelect.disabled = true;
-        
+                modeSelect.disabled = true;
+
                 quizSection.style.display = 'block';
                 results.style.display = 'none';
-        
+
                 currentAudioIndex = 0;
                 score = 0;
                 totalPossiblePoints = 0;
+                answeredCount = 0;
                 missedCount = 0;
                 missedPieces = [];
                 isReviewRound = false;
-                questionLocked = false;
-                selectedTitle = null;
-        
+                resetInputsForNewQuestion();
                 updateProgress();
                 loadCurrentAudio();
             }
-        
+            
             function startReviewRound() {
                 if (missedPieces.length === 0) return;
-        
+                
                 audioFiles = missedPieces;
                 results.style.display = 'none';
                 quizSection.style.display = 'block';
                 currentAudioIndex = 0;
                 score = 0;
                 totalPossiblePoints = 0;
+                answeredCount = 0;
                 missedCount = 0;
                 isReviewRound = true;
-                questionLocked = false;
-                selectedTitle = null;
-        
+                resetInputsForNewQuestion();
                 updateProgress();
                 loadCurrentAudio();
             }
-        
+            
             function loadCurrentAudio() {
                 if (currentAudio) {
                     currentAudio.pause();
@@ -795,9 +1223,9 @@
                         URL.revokeObjectURL(currentAudio.src);
                     }
                 }
-        
+                
                 const file = audioFiles[currentAudioIndex];
-        
+                
                 if (file instanceof File) {
                     currentAudio = new Audio(URL.createObjectURL(file));
                     currentAudio.addEventListener('loadedmetadata', function() {
@@ -809,30 +1237,25 @@
                 } else {
                     currentAudio = new Audio();
                 }
-        
-                feedback.textContent = '';
-                feedback.className = 'feedback';
-                questionLocked = false;
-                selectedTitle = null;
-        
+                
+                resetInputsForNewQuestion();
                 generateQuestionUI();
             }
-        
+
             function generateQuestionUI() {
                 const infoList = audioFiles.map(item => getMusicInfo(item));
                 currentCorrectInfo = infoList[currentAudioIndex];
                 currentCorrectTitleAnswer = currentCorrectInfo.title || currentCorrectInfo.displayName;
-        
-                // title options
+
+                // Title options for title/full modes
                 if (quizMode === 'title' || quizMode === 'full') {
                     optionsContainer.innerHTML = '';
                     optionButtons = [];
-        
                     const allTitles = infoList.map(info => info.title || info.displayName);
                     const uniqueTitles = [...new Set(allTitles)];
                     const shuffled = [...uniqueTitles];
                     shuffleArray(shuffled);
-        
+                    
                     shuffled.forEach(answer => {
                         const button = document.createElement('button');
                         button.className = 'option-btn';
@@ -855,29 +1278,25 @@
                     optionsContainer.style.display = 'none';
                     optionButtons = [];
                 }
-        
-                // composer/year entry
+
                 if (quizMode === 'composer-year' || quizMode === 'full') {
                     composerYearContainer.style.display = 'block';
-                    composerInput.value = '';
-                    yearInput.value = '';
                     composerInput.focus();
                 } else {
                     composerYearContainer.style.display = 'none';
                 }
             }
-        
+
             function selectTitleForFullMode(answer, button) {
                 if (questionLocked) return;
                 selectedTitle = answer;
                 optionButtons.forEach(btn => btn.classList.remove('selected'));
                 button.classList.add('selected');
             }
-        
-            // ===== Playback =====
+            
             function playCurrentAudio() {
                 const file = audioFiles[currentAudioIndex];
-        
+                
                 if (file instanceof File) {
                     if (currentAudio) {
                         currentAudio.play().catch(e => {
@@ -889,7 +1308,7 @@
                     const info = getMusicInfo(file);
                     feedback.textContent = `Now playing: ${info.title || file.displayName} (Demo)`;
                     feedback.className = "feedback correct-feedback";
-        
+                    
                     setTimeout(() => {
                         if (feedback.textContent.includes("Now playing")) {
                             feedback.textContent = "Audio finished. Make your selection!";
@@ -898,19 +1317,19 @@
                     }, 3000);
                 }
             }
-        
+            
             function skipToMiddle() {
                 if (currentAudio && currentAudio.duration) {
                     const middleTime = currentAudio.duration / 2;
                     currentAudio.currentTime = middleTime;
-        
+                    
                     if (currentAudio.paused) {
                         currentAudio.play().catch(e => {
                             feedback.textContent = "Error playing audio. Please try again.";
                             feedback.className = "feedback incorrect-feedback";
                         });
                     }
-        
+                    
                     feedback.textContent = "Skipped to middle of piece";
                     feedback.className = "feedback";
                 } else {
@@ -918,94 +1337,101 @@
                     feedback.className = "feedback incorrect-feedback";
                 }
             }
-        
-            // ===== Checking answers =====
+
             function checkTitleAnswer(selectedAnswer, correctAnswer, info, button) {
                 if (questionLocked) return;
                 questionLocked = true;
-        
+
                 optionButtons.forEach(btn => { btn.disabled = true; });
-        
+                
                 let pointsEarned = 0;
                 const maxPoints = 1;
-        
+
                 if (selectedAnswer === correctAnswer) {
                     pointsEarned = 1;
                     button.classList.add('correct');
                     feedback.textContent = "Correct! Well done!";
                     feedback.className = "feedback correct-feedback";
-        
-                    if (info.title || info.composer || info.year || info.period) {
+                    
+                    if (info.title || info.composer || info.yearLabel || info.period) {
                         setTimeout(() => {
                             let html = `<div><strong>Correct!</strong><br>`;
                             if (info.title) html += `Piece: ${info.title}<br>`;
                             if (info.composer) html += `Composer: ${info.composer}<br>`;
-                            if (info.year) html += `Year: ${info.year}<br>`;
+                            if (info.yearLabel) html += `Year: ${info.yearLabel}<br>`;
                             if (info.period) html += `Period: ${info.period}<br>`;
+                            if (info.style) html += `Style: ${info.style}<br>`;
                             html += `</div>`;
                             feedback.innerHTML = html;
-                        }, 1500);
+                        }, 800);
                     }
                 } else {
                     missedCount++;
                     button.classList.add('incorrect');
                     feedback.textContent = `Incorrect. The correct answer was: ${correctAnswer}`;
                     feedback.className = "feedback incorrect-feedback";
-        
+                    
                     const currentPiece = audioFiles[currentAudioIndex];
                     if (!isReviewRound && !missedPieces.includes(currentPiece)) {
                         missedPieces.push(currentPiece);
                     }
-        
+                    
                     optionButtons.forEach(btn => {
                         if (btn.textContent === correctAnswer) {
                             btn.classList.add('correct');
                         }
                     });
-        
-                    if (info.title || info.composer || info.year || info.period) {
+                    
+                    if (info.title || info.composer || info.yearLabel || info.period) {
                         setTimeout(() => {
                             let html = `<div><strong>Incorrect.</strong> The correct answer was: ${correctAnswer}<br>`;
                             if (info.title) html += `Piece: ${info.title}<br>`;
                             if (info.composer) html += `Composer: ${info.composer}<br>`;
-                            if (info.year) html += `Year: ${info.year}<br>`;
+                            if (info.yearLabel) html += `Year: ${info.yearLabel}<br>`;
                             if (info.period) html += `Period: ${info.period}<br>`;
+                            if (info.style) html += `Style: ${info.style}<br>`;
                             html += `</div>`;
                             feedback.innerHTML = html;
-                        }, 1500);
+                        }, 800);
                     }
                 }
-        
+                
                 registerQuestionResult(pointsEarned, maxPoints);
-                setTimeout(nextQuestion, 3500);
+                nextBtn.disabled = false;
             }
-        
+
             function checkComposerYearAnswer() {
                 if (questionLocked) return;
                 questionLocked = true;
                 submitComposerYearBtn.disabled = true;
-        
+
                 const info = currentCorrectInfo || getMusicInfo(audioFiles[currentAudioIndex]);
                 const inputComposer = composerInput.value.trim();
                 const inputYearStr = yearInput.value.trim();
                 const expectedComposer = info.composer;
-                const expectedYear = info.year;
-        
+                const expectedYearNum = info.yearNumeric;
+
                 const composerOK = expectedComposer ? composerMatches(inputComposer, expectedComposer) : false;
                 let yearOK = true;
-        
-                if (expectedYear) {
+                let yearGraded = false;
+
+                if (expectedYearNum) {
+                    yearGraded = true;
                     const inputYearNum = parseInt(inputYearStr, 10);
-                    const expectedYearNum = parseInt(expectedYear, 10);
-                    yearOK =
-                        !isNaN(inputYearNum) &&
-                        Math.abs(inputYearNum - expectedYearNum) <= 25;   // ±25 years
+                    yearOK = !isNaN(inputYearNum) && Math.abs(inputYearNum - expectedYearNum) <= 25;
                 }
-        
-                const allCorrect = composerOK && yearOK;
-                const pointsEarned = allCorrect ? 1 : 0;
-                const maxPoints = 1;
-        
+
+                // 2-point question: 1 for composer, 1 for year (if we know the year)
+                let maxPoints = 0;
+                if (expectedComposer) maxPoints += 1;
+                if (yearGraded) maxPoints += 1;
+
+                let pointsEarned = 0;
+                if (composerOK) pointsEarned += 1;
+                if (yearGraded && yearOK) pointsEarned += 1;
+
+                const allCorrect = (composerOK || !expectedComposer) && (!yearGraded || yearOK);
+
                 if (!allCorrect) {
                     missedCount++;
                     const currentPiece = audioFiles[currentAudioIndex];
@@ -1013,217 +1439,213 @@
                         missedPieces.push(currentPiece);
                     }
                 }
-        
+
                 let html = `<div><strong>${allCorrect ? 'Correct!' : 'Not quite.'}</strong><br>`;
                 html += `Piece: ${info.title || '(unknown title)'}<br>`;
                 if (expectedComposer) {
                     html += `Composer: ${expectedComposer} ${composerOK ? '✓' : `(your answer: ${inputComposer || '—'})`}<br>`;
                 } else {
-                    html += `Composer: (no composer stored in filename`;
-                    if (inputComposer) html += `; you entered: ${inputComposer}`;
-                    html += `)<br>`;
+                    html += `Composer: (not stored in filename)`;
+                    if (inputComposer) html += ` — you entered: ${inputComposer}`;
+                    html += `<br>`;
                 }
-        
-                if (expectedYear) {
-                    html += `Year: ${expectedYear} ${yearOK ? '✓ (within ±25 years)' : `(your answer: ${inputYearStr || '—'})`}<br>`;
+
+                if (yearGraded) {
+                    html += `Year (±25 accepted): ${info.yearLabel || expectedYearNum} ${yearOK ? '✓' : `(your answer: ${inputYearStr || '—'})`}<br>`;
                 } else {
                     html += `Year: (not stored for this file; not graded)<br>`;
                 }
-        
+
+                if (info.style) {
+                    html += `Style: ${info.style}<br>`;
+                }
                 if (info.period) {
                     html += `Period: ${info.period}<br>`;
                 }
-        
+
                 html += `</div>`;
                 feedback.innerHTML = html;
                 feedback.className = allCorrect ? "feedback correct-feedback" : "feedback incorrect-feedback";
-        
-                registerQuestionResult(pointsEarned, maxPoints);
-        
-                setTimeout(() => {
-                    submitComposerYearBtn.disabled = false;
-                    nextQuestion();
-                }, 3500);
+
+                registerQuestionResult(pointsEarned, maxPoints || 1); // avoid divide-by-zero
+
+                nextBtn.disabled = false;
             }
-        
+
             function checkFullAnswer() {
                 if (questionLocked) return;
                 questionLocked = true;
                 submitComposerYearBtn.disabled = true;
                 optionButtons.forEach(btn => btn.disabled = true);
-        
+
                 const info = currentCorrectInfo || getMusicInfo(audioFiles[currentAudioIndex]);
                 const expectedTitle = currentCorrectTitleAnswer;
                 const expectedComposer = info.composer;
-                const expectedYear = info.year;
-        
+                const expectedYearNum = info.yearNumeric;
+                const expectedStyle = info.style;
+
                 const inputComposer = composerInput.value.trim();
                 const inputYearStr = yearInput.value.trim();
-        
+                const inputStyle = styleSelect.value;
+
                 let maxParts = 0;
-                let pointsEarned = 0;
-        
+                if (expectedTitle) maxParts++;
+                if (expectedComposer) maxParts++;
+                if (expectedYearNum) maxParts++;
+                if (expectedStyle) maxParts++;
+
+                if (maxParts === 0) maxParts = 1; // safety
+
                 let titleCorrect = false;
                 let composerCorrect = false;
                 let yearCorrect = false;
-        
+                let styleCorrect = false;
+
                 if (expectedTitle) {
-                    maxParts++;
-                    if (selectedTitle && selectedTitle === expectedTitle) {
-                        titleCorrect = true;
-                        pointsEarned++;
-                    }
+                    titleCorrect = (selectedTitle === expectedTitle);
                 }
-        
+
                 if (expectedComposer) {
-                    maxParts++;
                     composerCorrect = composerMatches(inputComposer, expectedComposer);
-                    if (composerCorrect) pointsEarned++;
                 }
-        
-                if (expectedYear) {
-                    maxParts++;
+
+                if (expectedYearNum) {
                     const inputYearNum = parseInt(inputYearStr, 10);
-                    const expectedYearNum = parseInt(expectedYear, 10);
-                    yearCorrect =
-                        !isNaN(inputYearNum) &&
-                        Math.abs(inputYearNum - expectedYearNum) <= 25;  // ±25 years
-                    if (yearCorrect) pointsEarned++;
+                    yearCorrect = !isNaN(inputYearNum) && Math.abs(inputYearNum - expectedYearNum) <= 25;
                 }
-        
-                if (maxParts === 0) maxParts = 1;
-        
-                const gotAll = pointsEarned === maxParts;
-        
-                if (!gotAll) {
+
+                if (expectedStyle) {
+                    styleCorrect = normalizeKey(inputStyle) === normalizeKey(expectedStyle);
+                }
+
+                let pointsEarned = 0;
+                if (titleCorrect) pointsEarned++;
+                if (composerCorrect) pointsEarned++;
+                if (yearCorrect) pointsEarned++;
+                if (styleCorrect) pointsEarned++;
+
+                const allCorrect = (
+                    (!expectedTitle || titleCorrect) &&
+                    (!expectedComposer || composerCorrect) &&
+                    (!expectedYearNum || yearCorrect) &&
+                    (!expectedStyle || styleCorrect)
+                );
+
+                if (!allCorrect) {
                     missedCount++;
                     const currentPiece = audioFiles[currentAudioIndex];
                     if (!isReviewRound && !missedPieces.includes(currentPiece)) {
                         missedPieces.push(currentPiece);
                     }
                 }
-        
-                optionButtons.forEach(btn => {
-                    if (btn.textContent === expectedTitle) {
-                        btn.classList.add('correct');
-                    } else if (btn.classList.contains('selected') && btn.textContent !== expectedTitle) {
-                        btn.classList.add('incorrect');
+
+                // Visuals: mark selected title correctness
+                if (expectedTitle && optionButtons.length > 0) {
+                    optionButtons.forEach(btn => {
+                        if (btn.textContent === expectedTitle) {
+                            btn.classList.add('correct');
+                        }
+                    });
+                    if (selectedTitle) {
+                        const btn = optionButtons.find(b => b.textContent === selectedTitle);
+                        if (btn && selectedTitle !== expectedTitle) {
+                            btn.classList.add('incorrect');
+                        }
                     }
-                });
-        
-                let html = `<div><strong>${gotAll ? 'Perfect!' : `You scored ${pointsEarned}/${maxParts} on this one.`}</strong><br>`;
+                }
+
+                let html = `<div><strong>${allCorrect ? 'Perfect!' : 'Results:'}</strong><br>`;
                 html += `Piece: ${info.title || '(unknown title)'}<br>`;
-        
+
+                if (expectedTitle) {
+                    html += `Title: ${expectedTitle} ${titleCorrect ? '✓' : `(your choice: ${selectedTitle || '—'})`}<br>`;
+                }
+
                 if (expectedComposer) {
                     html += `Composer: ${expectedComposer} ${composerCorrect ? '✓' : `(your answer: ${inputComposer || '—'})`}<br>`;
-                } else {
-                    html += `Composer: (no composer stored in filename`;
-                    if (inputComposer) html += `; you entered: ${inputComposer}`;
-                    html += `)<br>`;
                 }
-        
-                if (expectedYear) {
-                    html += `Year: ${expectedYear} ${yearCorrect ? '✓ (within ±25 years)' : `(your answer: ${inputYearStr || '—'})`}<br>`;
-                } else {
-                    html += `Year: (not stored for this file; not graded)<br>`;
+
+                if (expectedYearNum) {
+                    html += `Year (±25 accepted): ${info.yearLabel || expectedYearNum} ${yearCorrect ? '✓' : `(your answer: ${inputYearStr || '—'})`}<br>`;
                 }
-        
+
+                if (expectedStyle) {
+                    html += `Style: ${expectedStyle} ${styleCorrect ? '✓' : `(your choice: ${inputStyle || '—'})`}<br>`;
+                }
+
                 if (info.period) {
                     html += `Period: ${info.period}<br>`;
                 }
-        
+
                 html += `</div>`;
                 feedback.innerHTML = html;
-                feedback.className = gotAll ? "feedback correct-feedback" : "feedback incorrect-feedback";
-        
+                feedback.className = allCorrect ? "feedback correct-feedback" : "feedback incorrect-feedback";
+
                 registerQuestionResult(pointsEarned, maxParts);
-        
-                setTimeout(() => {
-                    submitComposerYearBtn.disabled = false;
-                    nextQuestion();
-                }, 4000);
+                nextBtn.disabled = false;
             }
-        
-            // ===== Progress / results =====
+
             function nextQuestion() {
+                nextBtn.disabled = true;
+                submitComposerYearBtn.disabled = false;
+                questionLocked = false;
+                selectedTitle = null;
+
                 currentAudioIndex++;
-        
                 if (currentAudioIndex < audioFiles.length) {
-                    questionLocked = false;
-                    selectedTitle = null;
                     loadCurrentAudio();
                 } else {
                     finishQuiz();
                 }
             }
-        
-            function updateProgress() {
-                const totalQuestions = audioFiles.length || 0;
-                const current = totalQuestions === 0 ? 0 : currentAudioIndex + 1;
-        
-                progressText.textContent = totalQuestions === 0 ? `0/0` : `${current}/${totalQuestions}`;
-                scoreElement.textContent = score;
-                missedCountElement.textContent = missedCount;
-        
-                const progressPercentage = totalQuestions === 0 ? 0 : (current / totalQuestions) * 100;
-                progressBar.style.width = `${progressPercentage}%`;
-            }
-        
+
             function finishQuiz() {
                 quizSection.style.display = 'none';
                 results.style.display = 'block';
-        
-                const percentage = totalPossiblePoints === 0
-                    ? 0
-                    : Math.round((score / totalPossiblePoints) * 100);
-                finalScore.textContent = `${percentage}%`;
-        
-                if (percentage >= 90) {
-                    resultMessage.textContent = "Outstanding! You're a classical music expert!";
-                } else if (percentage >= 70) {
-                    resultMessage.textContent = "Great job! You know your classical music well.";
-                } else if (percentage >= 50) {
-                    resultMessage.textContent = "Good effort! Keep studying these pieces.";
+                
+                const pct = totalPossiblePoints > 0
+                    ? Math.round((score / totalPossiblePoints) * 100)
+                    : 0;
+                finalScore.textContent = `${pct}%`;
+                
+                if (pct >= 90) {
+                    resultMessage.textContent = "Outstanding! You're a Renaissance ninja.";
+                } else if (pct >= 70) {
+                    resultMessage.textContent = "Nice work! You know this rep pretty well.";
+                } else if (pct >= 50) {
+                    resultMessage.textContent = "Solid start. A few more laps through the playlist and you’re there.";
                 } else {
-                    resultMessage.textContent = "Keep practicing! You'll get better with time.";
+                    resultMessage.textContent = "Tough set, but that’s what practice is for. Run it again!";
                 }
-        
+                
                 if (missedPieces.length > 0 && reviewMissedCheckbox.checked && !isReviewRound) {
                     missedTotalElement.textContent = missedPieces.length;
                     reviewSection.style.display = 'block';
                 } else {
                     reviewSection.style.display = 'none';
                 }
+
+                modeSelect.disabled = false;
             }
-        
+            
             function restartQuiz() {
                 results.style.display = 'none';
                 quizSection.style.display = 'none';
                 demoBtn.style.display = 'inline-block';
-                document.querySelector('.file-input-section').style.display = 'flex';
+                const fileSection = document.querySelector('.file-input-section');
+                if (fileSection) fileSection.style.display = 'flex';
                 fileInput.value = '';
                 fileCount.textContent = 'No files selected';
-        
+                scanReport.textContent = "";
                 audioFiles = [];
                 missedPieces = [];
                 score = 0;
                 totalPossiblePoints = 0;
+                answeredCount = 0;
                 missedCount = 0;
-                currentAudioIndex = 0;
-                isReviewRound = false;
-                questionLocked = false;
-        
-                if (modeSelect) {
-                    modeSelect.disabled = false;
-                    quizMode = modeSelect.value;
-                } else {
-                    quizMode = 'title';
-                }
-        
-                updateModeUI();
                 updateProgress();
             }
         });
-        </script>        
+    </script>
 </body>
 </html>
