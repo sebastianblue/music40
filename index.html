@@ -39,14 +39,6 @@
             text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
         }
         
-        .instructions {
-            background: rgba(255, 255, 255, 0.1);
-            padding: 15px;
-            border-radius: 10px;
-            margin-bottom: 25px;
-            line-height: 1.6;
-        }
-        
         .settings {
             background: rgba(255, 255, 255, 0.1);
             padding: 15px;
@@ -58,11 +50,24 @@
             margin-bottom: 15px;
             display: flex;
             align-items: center;
+            gap: 8px;
+            flex-wrap: wrap;
         }
         
         .setting-item input[type="checkbox"] {
-            margin-right: 10px;
             transform: scale(1.2);
+        }
+
+        .setting-item label {
+            margin-right: 8px;
+        }
+
+        #mode-select {
+            padding: 6px 8px;
+            border-radius: 6px;
+            border: none;
+            background: rgba(0, 0, 0, 0.4);
+            color: #fff;
         }
         
         .file-input-section {
@@ -199,6 +204,46 @@
             background: rgba(244, 67, 54, 0.3);
             border-color: #f44336;
         }
+
+        .option-btn.selected {
+            border-color: #ffc107;
+            background: rgba(255, 193, 7, 0.2);
+        }
+
+        .composer-year-container {
+            margin-top: 10px;
+            display: none;
+        }
+
+        .composer-year-container p {
+            margin-bottom: 10px;
+        }
+
+        .composer-year-container input {
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 10px;
+            border-radius: 6px;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            background: rgba(0, 0, 0, 0.4);
+            color: #fff;
+        }
+
+        .composer-year-container button {
+            background: #4a90e2;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.3s;
+        }
+
+        .composer-year-container button:hover {
+            background: #357ae8;
+            transform: translateY(-2px);
+        }
         
         .feedback {
             margin-top: 20px;
@@ -331,7 +376,7 @@
 </head>
 <body>
     <h1>Enhanced Music Recognition Quiz</h1>
-        
+    <div class="container">
         <div class="settings">
             <h3>Quiz Settings</h3>
             <div class="setting-item">
@@ -341,6 +386,14 @@
             <div class="setting-item">
                 <input type="checkbox" id="review-missed" checked>
                 <label for="review-missed">Review missed pieces at the end</label>
+            </div>
+            <div class="setting-item">
+                <label for="mode-select">Quiz mode:</label>
+                <select id="mode-select">
+                    <option value="title">Multiple choice: piece title</option>
+                    <option value="composer-year">Type: composer + year</option>
+                    <option value="full">Full drill: title + composer + year (/3)</option>
+                </select>
             </div>
         </div>
         
@@ -357,8 +410,8 @@
         <div class="quiz-section" id="quiz-section">
             <div class="stats">
                 <div>Progress: <span id="progress-text">0/0</span></div>
-                <div>Score: <span id="score">0</span></div>
-                <div>Missed: <span id="missed-count">0</span></div>
+                <div>Score (points): <span id="score">0</span></div>
+                <div>Missed pieces: <span id="missed-count">0</span></div>
             </div>
             
             <div class="progress-bar">
@@ -382,7 +435,14 @@
             
             <div class="options-section">
                 <div class="options-grid" id="options-container">
-                    <!-- Options will be generated here -->
+                    <!-- Options generated here -->
+                </div>
+
+                <div class="composer-year-container" id="composer-year-container">
+                    <p>Type the <strong>composer</strong> and <strong>year</strong> for this piece:</p>
+                    <input type="text" id="composer-input" placeholder="Composer (e.g., Josquin des Prez)">
+                    <input type="text" id="year-input" placeholder="Year (e.g., 1503)">
+                    <button id="submit-composer-year">Submit Answer</button>
                 </div>
             </div>
             
@@ -402,384 +462,765 @@
     </div>
 
     <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            // DOM elements
-            const fileInput = document.getElementById('file-input');
-            const fileCount = document.getElementById('file-count');
-            const demoBtn = document.getElementById('demo-btn');
-            const quizSection = document.getElementById('quiz-section');
-            const playBtn = document.getElementById('play-btn');
-            const skipBtn = document.getElementById('skip-btn');
-            const optionsContainer = document.getElementById('options-container');
-            const feedback = document.getElementById('feedback');
-            const progressText = document.getElementById('progress-text');
-            const scoreElement = document.getElementById('score');
-            const missedCountElement = document.getElementById('missed-count');
-            const progressBar = document.getElementById('progress-bar');
-            const results = document.getElementById('results');
-            const finalScore = document.getElementById('final-score');
-            const resultMessage = document.getElementById('result-message');
-            const restartBtn = document.getElementById('restart-btn');
-            const reviewSection = document.getElementById('review-section');
-            const reviewBtn = document.getElementById('review-btn');
-            const missedTotalElement = document.getElementById('missed-total');
-            const randomStartCheckbox = document.getElementById('random-start');
-            const reviewMissedCheckbox = document.getElementById('review-missed');
-            
-            // Quiz state
-            let audioFiles = [];
-            let currentAudioIndex = 0;
-            let score = 0;
-            let missedCount = 0;
-            let currentAudio = null;
-            let optionButtons = [];
-            let missedPieces = [];
-            let isReviewRound = false;
-            
-            // Sample music data for the demo
-            const sampleMusic = [
-                { name: "Douce dame jolie", composer: "Guillaume de Machaut", period: "Medieval" },
-                { name: "Ave Maria...virgo serena", composer: "Josquin des Prez", period: "Renaissance" },
-                { name: "Sumer is icumen in", composer: "Anonymous", period: "Medieval" },
-                { name: "Can vei la lauzeta mover", composer: "Bernart de Ventadorn", period: "Medieval" },
-                { name: "Viderunt omnes", composer: "Léonin", period: "Medieval" },
-                { name: "Hoquetus David", composer: "Guillaume de Machaut", period: "Medieval" },
-                { name: "Ja nuns hons pris ne dirar", composer: "Richard the Lionheart", period: "Medieval" },
-                { name: "O rubor sanguinis", composer: "Hildegard von Bingen", period: "Medieval" }
-            ];
-            
-            // Event listeners
-            fileInput.addEventListener('change', handleFileSelection);
-            demoBtn.addEventListener('click', startDemoQuiz);
-            playBtn.addEventListener('click', playCurrentAudio);
-            skipBtn.addEventListener('click', skipToMiddle);
-            restartBtn.addEventListener('click', restartQuiz);
-            reviewBtn.addEventListener('click', startReviewRound);
-            
-            // Functions
-            function handleFileSelection(e) {
-                const files = e.target.files;
-                if (files.length === 0) return;
-                
-                audioFiles = Array.from(files);
-                fileCount.textContent = `${audioFiles.length} file(s) selected`;
-                
-                // Hide demo button
-                demoBtn.style.display = 'none';
-                
-                // Shuffle the files for random order
-                shuffleArray(audioFiles);
-                
-                // Start the quiz
-                startQuiz();
-            }
-            
-            function startDemoQuiz() {
-                // Use sample music for the demo
-                audioFiles = sampleMusic.map((music, index) => {
+    document.addEventListener('DOMContentLoaded', function() {
+        // DOM elements
+        const fileInput = document.getElementById('file-input');
+        const fileCount = document.getElementById('file-count');
+        const demoBtn = document.getElementById('demo-btn');
+        const quizSection = document.getElementById('quiz-section');
+        const playBtn = document.getElementById('play-btn');
+        const skipBtn = document.getElementById('skip-btn');
+        const optionsContainer = document.getElementById('options-container');
+        const composerYearContainer = document.getElementById('composer-year-container');
+        const composerInput = document.getElementById('composer-input');
+        const yearInput = document.getElementById('year-input');
+        const submitComposerYearBtn = document.getElementById('submit-composer-year');
+        const feedback = document.getElementById('feedback');
+        const progressText = document.getElementById('progress-text');
+        const scoreElement = document.getElementById('score');
+        const missedCountElement = document.getElementById('missed-count');
+        const progressBar = document.getElementById('progress-bar');
+        const results = document.getElementById('results');
+        const finalScore = document.getElementById('final-score');
+        const resultMessage = document.getElementById('result-message');
+        const restartBtn = document.getElementById('restart-btn');
+        const reviewSection = document.getElementById('review-section');
+        const reviewBtn = document.getElementById('review-btn');
+        const missedTotalElement = document.getElementById('missed-total');
+        const randomStartCheckbox = document.getElementById('random-start');
+        const reviewMissedCheckbox = document.getElementById('review-missed');
+        const modeSelect = document.getElementById('mode-select');
+
+        // Quiz state
+        let audioFiles = [];
+        let currentAudioIndex = 0;
+        let score = 0;                // total points
+        let totalPossiblePoints = 0;  // for percentage
+        let missedCount = 0;          // questions where anything was wrong
+        let currentAudio = null;
+        let optionButtons = [];
+        let missedPieces = [];
+        let isReviewRound = false;
+        let quizMode = modeSelect ? modeSelect.value : 'title';
+        let questionLocked = false;
+        let currentCorrectInfo = null;
+        let currentCorrectTitleAnswer = "";
+        let selectedTitle = null;
+
+        // Sample music for demo
+        const sampleMusic = [
+            { name: "Douce dame jolie", composer: "Guillaume de Machaut", period: "Medieval" },
+            { name: "Ave Maria...virgo serena", composer: "Josquin des Prez", period: "Renaissance" },
+            { name: "Sumer is icumen in", composer: "Anonymous", period: "Medieval" },
+            { name: "Can vei la lauzeta mover", composer: "Bernart de Ventadorn", period: "Medieval" },
+            { name: "Viderunt omnes", composer: "Léonin", period: "Medieval" },
+            { name: "Hoquetus David", composer: "Guillaume de Machaut", period: "Medieval" },
+            { name: "Ja nuns hons pris ne dirat", composer: "Richard the Lionheart", period: "Medieval" },
+            { name: "O rubor sanguinis", composer: "Hildegard von Bingen", period: "Medieval" }
+        ];
+
+        // ===== Helper functions for metadata parsing =====
+
+        function inferPeriodFromYear(year) {
+            const y = parseInt(year, 10);
+            if (isNaN(y)) return "";
+            if (y < 1400) return "Medieval";
+            if (y < 1600) return "Renaissance";
+            if (y < 1750) return "Baroque";
+            return "";
+        }
+
+        function parseMusicInfoFromName(fileName) {
+            let withoutExt = fileName.replace(/\.[^/.]+$/, "");
+            let base = withoutExt.trim();
+
+            // Clean Wright-like prefixes if they ever show up
+            base = base.replace(/^\d+-\d+\s+Wright no\. \d+_?\s*/, "");
+            base = base.replace(/^\d+\s*-\s*/, "");
+
+            let year = null;
+            let composer = "";
+            let title = "";
+            let period = "";
+
+            const firstUnd = base.indexOf("_");
+
+            if (firstUnd === -1) {
+                // No underscores; just treat full thing as title
+                title = base.replace(/_/g, " ").trim();
+            } else {
+                const firstPart = base.slice(0, firstUnd);
+                const rest = base.slice(firstUnd + 1);
+
+                if (/^\d{3,4}$/.test(firstPart)) {
+                    // Numeric year: "1600_John Dowland_Flow my tears..."
+                    year = firstPart;
+                } else if (/^year$/i.test(firstPart)) {
+                    // Placeholder "year_": no year in filename
+                    year = null;
+                } else {
+                    // Treat firstPart as composer, rest as title
+                    composer = firstPart.replace(/_/g, " ").trim();
+                    title = rest.replace(/_/g, " ").trim();
+                    if (year) {
+                        period = inferPeriodFromYear(year);
+                    }
+                    const displayTitle = title || base.replace(/_/g, " ").trim();
                     return {
-                        name: `${index + 1}-${music.name}.mp3`,
-                        displayName: music.name,
-                        composer: music.composer,
-                        period: music.period
+                        year,
+                        composer,
+                        title: displayTitle,
+                        period,
+                        displayName:
+                            displayTitle +
+                            (composer ? ` — ${composer}` : "") +
+                            (year ? ` (${year})` : "")
                     };
+                }
+
+                // For numeric year or "year_"
+                const secondUnd = rest.indexOf("_");
+                if (secondUnd === -1) {
+                    composer = rest.replace(/_/g, " ").trim();
+                } else {
+                    composer = rest.slice(0, secondUnd).replace(/_/g, " ").trim();
+                    const rest2 = rest.slice(secondUnd + 1);
+                    title = rest2.replace(/_/g, " ").trim();
+                }
+            }
+
+            if (!title) {
+                title = base.replace(/_/g, " ").trim();
+            }
+
+            if (year) {
+                period = inferPeriodFromYear(year);
+            }
+
+            const displayTitle = title;
+            const displayName =
+                displayTitle +
+                (composer ? ` — ${composer}` : "") +
+                (year ? ` (${year})` : "");
+
+            return { year, composer, title: displayTitle, period, displayName };
+        }
+
+        function getMusicInfo(item) {
+            if (item instanceof File) {
+                return parseMusicInfoFromName(item.name);
+            } else if (item && typeof item === "object") {
+                const title = item.displayName || item.name || "";
+                const composer = item.composer || "";
+                const period = item.period || "";
+                return {
+                    year: null,
+                    composer,
+                    title,
+                    period,
+                    displayName: composer ? `${title} — ${composer}` : title
+                };
+            } else {
+                return {
+                    year: null,
+                    composer: "",
+                    title: "",
+                    period: "",
+                    displayName: ""
+                };
+            }
+        }
+
+        function normalizeName(str) {
+            return (str || "")
+                .toLowerCase()
+                .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+                .replace(/[^a-z]/g, "");
+        }
+
+        function composerMatches(input, expected) {
+            const a = normalizeName(input);
+            const b = normalizeName(expected);
+            if (!a || !b) return false;
+            if (a === b) return true;
+            return (b.includes(a) || a.includes(b)) && a.length >= 3;
+        }
+
+        function shuffleArray(array) {
+            for (let i = array.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [array[i], array[j]] = [array[j], array[i]];
+            }
+        }
+
+        function registerQuestionResult(pointsEarned, maxPointsForQuestion) {
+            score += pointsEarned;
+            totalPossiblePoints += maxPointsForQuestion;
+            updateProgress();
+        }
+
+        function updateModeUI() {
+            quizMode = modeSelect ? modeSelect.value : 'title';
+
+            if (quizMode === 'title') {
+                optionsContainer.style.display = 'grid';
+                composerYearContainer.style.display = 'none';
+            } else if (quizMode === 'composer-year') {
+                optionsContainer.style.display = 'none';
+                composerYearContainer.style.display = 'block';
+            } else if (quizMode === 'full') {
+                optionsContainer.style.display = 'grid';
+                composerYearContainer.style.display = 'block';
+            }
+        }
+
+        // ===== Event listeners =====
+        fileInput.addEventListener('change', handleFileSelection);
+        demoBtn.addEventListener('click', startDemoQuiz);
+        playBtn.addEventListener('click', playCurrentAudio);
+        skipBtn.addEventListener('click', skipToMiddle);
+        restartBtn.addEventListener('click', restartQuiz);
+        reviewBtn.addEventListener('click', startReviewRound);
+
+        submitComposerYearBtn.addEventListener('click', () => {
+            if (quizMode === 'composer-year') {
+                checkComposerYearAnswer();
+            } else if (quizMode === 'full') {
+                checkFullAnswer();
+            }
+        });
+
+        composerInput.addEventListener('keydown', handleComposerYearKey);
+        yearInput.addEventListener('keydown', handleComposerYearKey);
+
+        function handleComposerYearKey(e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                if (quizMode === 'composer-year') {
+                    checkComposerYearAnswer();
+                } else if (quizMode === 'full') {
+                    checkFullAnswer();
+                }
+            }
+        }
+
+        if (modeSelect) {
+            modeSelect.addEventListener('change', () => {
+                // Only let mode change before quiz starts
+                if (!quizSection.style.display || quizSection.style.display === 'none') {
+                    updateModeUI();
+                }
+            });
+        }
+
+        updateModeUI();
+
+        // ===== Core logic =====
+        function handleFileSelection(e) {
+            const files = e.target.files;
+            if (!files || files.length === 0) return;
+
+            audioFiles = Array.from(files);
+            fileCount.textContent = `${audioFiles.length} file(s) selected`;
+            demoBtn.style.display = 'none';
+
+            shuffleArray(audioFiles);
+            startQuiz();
+        }
+
+        function startDemoQuiz() {
+            audioFiles = sampleMusic.map((music, index) => {
+                return {
+                    name: `${index + 1}-${music.name}.mp3`,
+                    displayName: music.name,
+                    composer: music.composer,
+                    period: music.period
+                };
+            });
+
+            demoBtn.style.display = 'none';
+            document.querySelector('.file-input-section').style.display = 'none';
+            startQuiz();
+        }
+
+        function startQuiz() {
+            quizMode = modeSelect ? modeSelect.value : 'title';
+            updateModeUI();
+            if (modeSelect) modeSelect.disabled = true;
+
+            quizSection.style.display = 'block';
+            results.style.display = 'none';
+
+            currentAudioIndex = 0;
+            score = 0;
+            totalPossiblePoints = 0;
+            missedCount = 0;
+            missedPieces = [];
+            isReviewRound = false;
+            questionLocked = false;
+            selectedTitle = null;
+
+            updateProgress();
+            loadCurrentAudio();
+        }
+
+        function startReviewRound() {
+            if (missedPieces.length === 0) return;
+
+            audioFiles = missedPieces;
+            results.style.display = 'none';
+            quizSection.style.display = 'block';
+            currentAudioIndex = 0;
+            score = 0;
+            totalPossiblePoints = 0;
+            missedCount = 0;
+            isReviewRound = true;
+            questionLocked = false;
+            selectedTitle = null;
+
+            updateProgress();
+            loadCurrentAudio();
+        }
+
+        function loadCurrentAudio() {
+            if (currentAudio) {
+                currentAudio.pause();
+                if (currentAudio.src && currentAudio.src.startsWith('blob:')) {
+                    URL.revokeObjectURL(currentAudio.src);
+                }
+            }
+
+            const file = audioFiles[currentAudioIndex];
+
+            if (file instanceof File) {
+                currentAudio = new Audio(URL.createObjectURL(file));
+                currentAudio.addEventListener('loadedmetadata', function() {
+                    if (randomStartCheckbox.checked && currentAudio.duration > 10) {
+                        const randomStartTime = Math.random() * (currentAudio.duration - 10) + 5;
+                        currentAudio.currentTime = Math.min(randomStartTime, currentAudio.duration - 5);
+                    }
                 });
-                
-                // Hide demo button and file input
-                demoBtn.style.display = 'none';
-                document.querySelector('.file-input-section').style.display = 'none';
-                
-                startQuiz();
+            } else {
+                currentAudio = new Audio();
             }
-            
-            function shuffleArray(array) {
-                for (let i = array.length - 1; i > 0; i--) {
-                    const j = Math.floor(Math.random() * (i + 1));
-                    [array[i], array[j]] = [array[j], array[i]];
-                }
-            }
-            
-            function startQuiz() {
-                quizSection.style.display = 'block';
-                currentAudioIndex = 0;
-                score = 0;
-                missedCount = 0;
-                missedPieces = [];
-                isReviewRound = false;
-                updateProgress();
-                loadCurrentAudio();
-            }
-            
-            function startReviewRound() {
-                if (missedPieces.length === 0) return;
-                
-                // Use the missed pieces for the review round
-                audioFiles = missedPieces;
-                results.style.display = 'none';
-                quizSection.style.display = 'block';
-                currentAudioIndex = 0;
-                score = 0;
-                missedCount = 0;
-                isReviewRound = true;
-                updateProgress();
-                loadCurrentAudio();
-            }
-            
-            function loadCurrentAudio() {
-                if (currentAudio) {
-                    currentAudio.pause();
-                    if (currentAudio.src && currentAudio.src.startsWith('blob:')) {
-                        URL.revokeObjectURL(currentAudio.src);
-                    }
-                }
-                
-                const file = audioFiles[currentAudioIndex];
-                
-                // Check if it's a real file or a demo item
-                if (file instanceof File) {
-                    // Real file - create an object URL
-                    currentAudio = new Audio(URL.createObjectURL(file));
-                    
-                    // Set up event listener for when metadata is loaded
-                    currentAudio.addEventListener('loadedmetadata', function() {
-                        // If random start is enabled, set to a random position
-                        if (randomStartCheckbox.checked && currentAudio.duration > 10) {
-                            const randomStartTime = Math.random() * (currentAudio.duration - 10) + 5;
-                            currentAudio.currentTime = Math.min(randomStartTime, currentAudio.duration - 5);
-                        }
-                    });
-                } else {
-                    // Demo item - create a dummy audio element
-                    currentAudio = new Audio();
-                }
-                
-                // Reset UI
-                feedback.textContent = '';
-                feedback.className = 'feedback';
-                
-                // Generate options
-                generateOptions();
-            }
-            
-            function playCurrentAudio() {
-                const file = audioFiles[currentAudioIndex];
-                
-                // Check if it's a real file or a demo item
-                if (file instanceof File) {
-                    // Real file - play normally
-                    if (currentAudio) {
-                        currentAudio.play().catch(e => {
-                            feedback.textContent = "Error playing audio. Please try again.";
-                            feedback.className = "feedback incorrect-feedback";
-                        });
-                    }
-                } else {
-                    // Demo item - show a message instead of playing
-                    feedback.textContent = `Now playing: ${file.displayName} (Demo)`;
-                    feedback.className = "feedback correct-feedback";
-                    
-                    // Simulate audio playback time
-                    setTimeout(() => {
-                        if (feedback.textContent.includes("Now playing")) {
-                            feedback.textContent = "Audio finished. Make your selection!";
-                            feedback.className = "feedback";
-                        }
-                    }, 3000);
-                }
-            }
-            
-            function skipToMiddle() {
-                if (currentAudio && currentAudio.duration) {
-                    const middleTime = currentAudio.duration / 2;
-                    currentAudio.currentTime = middleTime;
-                    
-                    if (currentAudio.paused) {
-                        currentAudio.play().catch(e => {
-                            feedback.textContent = "Error playing audio. Please try again.";
-                            feedback.className = "feedback incorrect-feedback";
-                        });
-                    }
-                    
-                    feedback.textContent = "Skipped to middle of piece";
-                    feedback.className = "feedback";
-                } else {
-                    feedback.textContent = "Audio not ready yet. Please wait.";
-                    feedback.className = "feedback incorrect-feedback";
-                }
-            }
-            
-            function generateOptions() {
-                // Clear previous options
+
+            feedback.textContent = '';
+            feedback.className = 'feedback';
+            questionLocked = false;
+            selectedTitle = null;
+
+            generateQuestionUI();
+        }
+
+        function generateQuestionUI() {
+            const infoList = audioFiles.map(item => getMusicInfo(item));
+            currentCorrectInfo = infoList[currentAudioIndex];
+            currentCorrectTitleAnswer = currentCorrectInfo.title || currentCorrectInfo.displayName;
+
+            // Title options for title/full modes
+            if (quizMode === 'title' || quizMode === 'full') {
                 optionsContainer.innerHTML = '';
                 optionButtons = [];
-                
-                // Get the correct answer
-                let correctAnswer;
-                if (audioFiles[currentAudioIndex] instanceof File) {
-                    correctAnswer = formatFileName(audioFiles[currentAudioIndex].name);
-                } else {
-                    correctAnswer = audioFiles[currentAudioIndex].displayName;
-                }
-                
-                // Create an array of all possible answers
-                const allAnswers = audioFiles.map(file => {
-                    if (file instanceof File) {
-                        return formatFileName(file.name);
-                    } else {
-                        return file.displayName;
-                    }
-                });
-                
-                // Shuffle the answers
-                const shuffledAnswers = [...allAnswers];
-                shuffleArray(shuffledAnswers);
-                
-                // Create option buttons
-                shuffledAnswers.forEach(answer => {
+
+                const allTitles = infoList.map(info => info.title || info.displayName);
+                const uniqueTitles = [...new Set(allTitles)];
+                const shuffled = [...uniqueTitles];
+                shuffleArray(shuffled);
+
+                shuffled.forEach(answer => {
                     const button = document.createElement('button');
                     button.className = 'option-btn';
                     button.textContent = answer;
-                    button.addEventListener('click', () => checkAnswer(answer, correctAnswer, button));
+                    if (quizMode === 'title') {
+                        button.addEventListener('click', () =>
+                            checkTitleAnswer(answer, currentCorrectTitleAnswer, currentCorrectInfo, button)
+                        );
+                    } else if (quizMode === 'full') {
+                        button.addEventListener('click', () =>
+                            selectTitleForFullMode(answer, button)
+                        );
+                    }
                     optionsContainer.appendChild(button);
                     optionButtons.push(button);
                 });
+                optionsContainer.style.display = 'grid';
+            } else {
+                optionsContainer.innerHTML = '';
+                optionsContainer.style.display = 'none';
+                optionButtons = [];
             }
-            
-            function formatFileName(fileName) {
-                // Remove file extension
-                let name = fileName.replace(/\.[^/.]+$/, "");
-                
-                // Remove track numbers and "Wright no." prefix for cleaner display
-                name = name.replace(/^\d+-\d+\s+Wright no\. \d+_?\s*/, '');
-                name = name.replace(/^\d+\s*-\s*/, '');
-                
-                return name;
+
+            // Composer/year inputs visibility
+            if (quizMode === 'composer-year' || quizMode === 'full') {
+                composerYearContainer.style.display = 'block';
+                composerInput.value = '';
+                yearInput.value = '';
+                composerInput.focus();
+            } else {
+                composerYearContainer.style.display = 'none';
             }
-            
-            function checkAnswer(selectedAnswer, correctAnswer, button) {
-                // Disable all option buttons
-                optionButtons.forEach(btn => {
-                    btn.disabled = true;
-                });
-                
-                const currentPiece = audioFiles[currentAudioIndex];
-                
-                if (selectedAnswer === correctAnswer) {
-                    // Correct answer
-                    score++;
-                    button.classList.add('correct');
-                    feedback.textContent = "Correct! Well done!";
-                    feedback.className = "feedback correct-feedback";
-                    
-                    // Show additional info if available
-                    if (currentPiece.composer) {
-                        setTimeout(() => {
-                            feedback.innerHTML = `
-                                <div>
-                                    <strong>Correct!</strong><br>
-                                    Composer: ${currentPiece.composer}<br>
-                                    Period: ${currentPiece.period}
-                                </div>
-                            `;
-                        }, 1500);
-                    }
-                } else {
-                    // Incorrect answer
-                    missedCount++;
-                    button.classList.add('incorrect');
-                    feedback.textContent = `Incorrect. The correct answer was: ${correctAnswer}`;
-                    feedback.className = "feedback incorrect-feedback";
-                    
-                    // Add to missed pieces if not already there and not in review round
-                    if (!isReviewRound && !missedPieces.includes(currentPiece)) {
-                        missedPieces.push(currentPiece);
-                    }
-                    
-                    // Highlight the correct answer
-                    optionButtons.forEach(btn => {
-                        if (btn.textContent === correctAnswer) {
-                            btn.classList.add('correct');
-                        }
+        }
+
+        function selectTitleForFullMode(answer, button) {
+            if (questionLocked) return;
+            selectedTitle = answer;
+            optionButtons.forEach(btn => btn.classList.remove('selected'));
+            button.classList.add('selected');
+        }
+
+        function playCurrentAudio() {
+            const file = audioFiles[currentAudioIndex];
+
+            if (file instanceof File) {
+                if (currentAudio) {
+                    currentAudio.play().catch(e => {
+                        feedback.textContent = "Error playing audio. Please try again.";
+                        feedback.className = "feedback incorrect-feedback";
                     });
-                    
-                    // Show additional info if available
-                    if (currentPiece.composer) {
-                        setTimeout(() => {
-                            feedback.innerHTML = `
-                                <div>
-                                    <strong>Incorrect.</strong> The correct answer was: ${correctAnswer}<br>
-                                    ${currentPiece.composer ? `Composer: ${currentPiece.composer}<br>` : ''}
-                                    ${currentPiece.period ? `Period: ${currentPiece.period}` : ''}
-                                </div>
-                            `;
-                        }, 1500);
-                    }
                 }
-                
-                // Update score and progress
-                updateProgress();
-                
-                // Move to next question or finish quiz
+            } else {
+                const info = getMusicInfo(file);
+                feedback.textContent = `Now playing: ${info.title || file.displayName} (Demo)`;
+                feedback.className = "feedback correct-feedback";
+
                 setTimeout(() => {
-                    currentAudioIndex++;
-                    
-                    if (currentAudioIndex < audioFiles.length) {
-                        loadCurrentAudio();
-                    } else {
-                        finishQuiz();
+                    if (feedback.textContent.includes("Now playing")) {
+                        feedback.textContent = "Audio finished. Make your selection!";
+                        feedback.className = "feedback";
                     }
-                }, 3500);
+                }, 3000);
             }
-            
-            function updateProgress() {
-                const total = audioFiles.length;
-                const current = currentAudioIndex + 1;
-                
-                progressText.textContent = `${current}/${total}`;
-                scoreElement.textContent = score;
-                missedCountElement.textContent = missedCount;
-                
-                const progressPercentage = (current / total) * 100;
-                progressBar.style.width = `${progressPercentage}%`;
-            }
-            
-            function finishQuiz() {
-                quizSection.style.display = 'none';
-                results.style.display = 'block';
-                
-                const percentage = Math.round((score / audioFiles.length) * 100);
-                finalScore.textContent = `${percentage}%`;
-                
-                if (percentage >= 90) {
-                    resultMessage.textContent = "Outstanding! You're a classical music expert!";
-                } else if (percentage >= 70) {
-                    resultMessage.textContent = "Great job! You know your classical music well.";
-                } else if (percentage >= 50) {
-                    resultMessage.textContent = "Good effort! Keep studying these pieces.";
-                } else {
-                    resultMessage.textContent = "Keep practicing! You'll get better with time.";
+        }
+
+        function skipToMiddle() {
+            if (currentAudio && currentAudio.duration) {
+                const middleTime = currentAudio.duration / 2;
+                currentAudio.currentTime = middleTime;
+
+                if (currentAudio.paused) {
+                    currentAudio.play().catch(e => {
+                        feedback.textContent = "Error playing audio. Please try again.";
+                        feedback.className = "feedback incorrect-feedback";
+                    });
                 }
-                
-                // Show review section if there are missed pieces and review is enabled
-                if (missedPieces.length > 0 && reviewMissedCheckbox.checked && !isReviewRound) {
-                    missedTotalElement.textContent = missedPieces.length;
-                    reviewSection.style.display = 'block';
-                } else {
-                    reviewSection.style.display = 'none';
+
+                feedback.textContent = "Skipped to middle of piece";
+                feedback.className = "feedback";
+            } else {
+                feedback.textContent = "Audio not ready yet. Please wait.";
+                feedback.className = "feedback incorrect-feedback";
+            }
+        }
+
+        function checkTitleAnswer(selectedAnswer, correctAnswer, info, button) {
+            if (questionLocked) return;
+            questionLocked = true;
+
+            optionButtons.forEach(btn => { btn.disabled = true; });
+
+            let pointsEarned = 0;
+            const maxPoints = 1;
+
+            if (selectedAnswer === correctAnswer) {
+                pointsEarned = 1;
+                button.classList.add('correct');
+                feedback.textContent = "Correct! Well done!";
+                feedback.className = "feedback correct-feedback";
+
+                if (info.title || info.composer || info.year || info.period) {
+                    setTimeout(() => {
+                        let html = `<div><strong>Correct!</strong><br>`;
+                        if (info.title) html += `Piece: ${info.title}<br>`;
+                        if (info.composer) html += `Composer: ${info.composer}<br>`;
+                        if (info.year) html += `Year: ${info.year}<br>`;
+                        if (info.period) html += `Period: ${info.period}<br>`;
+                        html += `</div>`;
+                        feedback.innerHTML = html;
+                    }, 1500);
+                }
+            } else {
+                missedCount++;
+                button.classList.add('incorrect');
+                feedback.textContent = `Incorrect. The correct answer was: ${correctAnswer}`;
+                feedback.className = "feedback incorrect-feedback";
+
+                const currentPiece = audioFiles[currentAudioIndex];
+                if (!isReviewRound && !missedPieces.includes(currentPiece)) {
+                    missedPieces.push(currentPiece);
+                }
+
+                optionButtons.forEach(btn => {
+                    if (btn.textContent === correctAnswer) {
+                        btn.classList.add('correct');
+                    }
+                });
+
+                if (info.title || info.composer || info.year || info.period) {
+                    setTimeout(() => {
+                        let html = `<div><strong>Incorrect.</strong> The correct answer was: ${correctAnswer}<br>`;
+                        if (info.title) html += `Piece: ${info.title}<br>`;
+                        if (info.composer) html += `Composer: ${info.composer}<br>`;
+                        if (info.year) html += `Year: ${info.year}<br>`;
+                        if (info.period) html += `Period: ${info.period}<br>`;
+                        html += `</div>`;
+                        feedback.innerHTML = html;
+                    }, 1500);
                 }
             }
-            
-            function restartQuiz() {
-                results.style.display = 'none';
-                quizSection.style.display = 'none';
-                demoBtn.style.display = 'inline-block';
-                document.querySelector('.file-input-section').style.display = 'flex';
-                fileInput.value = '';
-                fileCount.textContent = 'No files selected';
-                audioFiles = [];
-                missedPieces = [];
+
+            registerQuestionResult(pointsEarned, maxPoints);
+            setTimeout(nextQuestion, 3500);
+        }
+
+        function checkComposerYearAnswer() {
+            if (questionLocked) return;
+            questionLocked = true;
+            submitComposerYearBtn.disabled = true;
+
+            const info = currentCorrectInfo || getMusicInfo(audioFiles[currentAudioIndex]);
+            const inputComposer = composerInput.value.trim();
+            const inputYearStr = yearInput.value.trim();
+            const expectedComposer = info.composer;
+            const expectedYear = info.year;
+
+            const composerOK = expectedComposer ? composerMatches(inputComposer, expectedComposer) : false;
+            let yearOK = true;
+
+            if (expectedYear) {
+    const inputYearNum = parseInt(inputYearStr, 10);
+    const expectedYearNum = parseInt(expectedYear, 10);
+    yearOK =
+        !isNaN(inputYearNum) &&
+        Math.abs(inputYearNum - expectedYearNum) <= 25; // ±25 years allowed
+}
+
+
+            const allCorrect = composerOK && yearOK;
+            const pointsEarned = allCorrect ? 1 : 0;
+            const maxPoints = 1;
+
+            if (!allCorrect) {
+                missedCount++;
+                const currentPiece = audioFiles[currentAudioIndex];
+                if (!isReviewRound && !missedPieces.includes(currentPiece)) {
+                    missedPieces.push(currentPiece);
+                }
             }
-        });
+
+            let html = `<div><strong>${allCorrect ? 'Correct!' : 'Not quite.'}</strong><br>`;
+            html += `Piece: ${info.title || '(unknown title)'}<br>`;
+            if (expectedComposer) {
+                html += `Composer: ${expectedComposer} ${composerOK ? '✓' : `(your answer: ${inputComposer || '—'})`}<br>`;
+            } else {
+                html += `Composer: (no composer stored in filename`;
+                if (inputComposer) html += `; you entered: ${inputComposer}`;
+                html += `)<br>`;
+            }
+
+            if (expectedYear) {
+                html += `Year: ${expectedYear} ${yearOK ? '✓' : `(your answer: ${inputYearStr || '—'})`}<br>`;
+            } else {
+                html += `Year: (not stored for this file; not graded)<br>`;
+            }
+
+            if (info.period) {
+                html += `Period: ${info.period}<br>`;
+            }
+
+            html += `</div>`;
+            feedback.innerHTML = html;
+            feedback.className = allCorrect ? "feedback correct-feedback" : "feedback incorrect-feedback";
+
+            registerQuestionResult(pointsEarned, maxPoints);
+
+            setTimeout(() => {
+                submitComposerYearBtn.disabled = false;
+                nextQuestion();
+            }, 3500);
+        }
+
+        function checkFullAnswer() {
+            if (questionLocked) return;
+            questionLocked = true;
+            submitComposerYearBtn.disabled = true;
+            optionButtons.forEach(btn => btn.disabled = true);
+
+            const info = currentCorrectInfo || getMusicInfo(audioFiles[currentAudioIndex]);
+            const expectedTitle = currentCorrectTitleAnswer;
+            const expectedComposer = info.composer;
+            const expectedYear = info.year;
+
+            const inputComposer = composerInput.value.trim();
+            const inputYearStr = yearInput.value.trim();
+
+            let maxParts = 0;
+            let pointsEarned = 0;
+
+            let titleCorrect = false;
+            let composerCorrect = false;
+            let yearCorrect = false;
+
+            // Title part
+            if (expectedTitle) {
+                maxParts++;
+                if (selectedTitle && selectedTitle === expectedTitle) {
+                    titleCorrect = true;
+                    pointsEarned++;
+                }
+            }
+
+            // Composer part
+            if (expectedComposer) {
+                maxParts++;
+                composerCorrect = composerMatches(inputComposer, expectedComposer);
+                if (composerCorrect) pointsEarned++;
+            }
+
+            // Year part
+            if (expectedYear) {
+    maxParts++;
+    const inputYearNum = parseInt(inputYearStr, 10);
+    const expectedYearNum = parseInt(expectedYear, 10);
+    yearCorrect =
+        !isNaN(inputYearNum) &&
+        Math.abs(inputYearNum - expectedYearNum) <= 25; // ±25 years window
+    if (yearCorrect) pointsEarned++;
+}
+
+
+            if (maxParts === 0) maxParts = 1;
+
+            const gotAll = pointsEarned === maxParts;
+
+            if (!gotAll) {
+                missedCount++;
+                const currentPiece = audioFiles[currentAudioIndex];
+                if (!isReviewRound && !missedPieces.includes(currentPiece)) {
+                    missedPieces.push(currentPiece);
+                }
+            }
+
+            // Highlight titles
+            optionButtons.forEach(btn => {
+                if (btn.textContent === expectedTitle) {
+                    btn.classList.add('correct');
+                } else if (btn.classList.contains('selected') && btn.textContent !== expectedTitle) {
+                    btn.classList.add('incorrect');
+                }
+            });
+
+            let html = `<div><strong>${gotAll ? 'Perfect!' : `You scored ${pointsEarned}/${maxParts} on this one.`}</strong><br>`;
+            html += `Piece: ${info.title || '(unknown title)'}<br>`;
+
+            if (expectedComposer) {
+                html += `Composer: ${expectedComposer} ${composerCorrect ? '✓' : `(your answer: ${inputComposer || '—'})`}<br>`;
+            } else {
+                html += `Composer: (no composer stored in filename`;
+                if (inputComposer) html += `; you entered: ${inputComposer}`;
+                html += `)<br>`;
+            }
+
+            if (expectedYear) {
+                html += `Year: ${expectedYear} ${yearCorrect ? '✓' : `(your answer: ${inputYearStr || '—'})`}<br>`;
+            } else {
+                html += `Year: (not stored for this file; not graded)<br>`;
+            }
+
+            if (info.period) {
+                html += `Period: ${info.period}<br>`;
+            }
+
+            html += `</div>`;
+            feedback.innerHTML = html;
+            feedback.className = gotAll ? "feedback correct-feedback" : "feedback incorrect-feedback";
+
+            registerQuestionResult(pointsEarned, maxParts);
+
+            setTimeout(() => {
+                submitComposerYearBtn.disabled = false;
+                nextQuestion();
+            }, 4000);
+        }
+
+        function nextQuestion() {
+            currentAudioIndex++;
+
+            if (currentAudioIndex < audioFiles.length) {
+                questionLocked = false;
+                selectedTitle = null;
+                loadCurrentAudio();
+            } else {
+                finishQuiz();
+            }
+        }
+
+        function updateProgress() {
+            const totalQuestions = audioFiles.length || 0;
+            const current = totalQuestions === 0 ? 0 : currentAudioIndex + 1;
+
+            progressText.textContent = totalQuestions === 0 ? `0/0` : `${current}/${totalQuestions}`;
+            scoreElement.textContent = score;
+            missedCountElement.textContent = missedCount;
+
+            const progressPercentage = totalQuestions === 0 ? 0 : (current / totalQuestions) * 100;
+            progressBar.style.width = `${progressPercentage}%`;
+        }
+
+        function finishQuiz() {
+            quizSection.style.display = 'none';
+            results.style.display = 'block';
+
+            const percentage = totalPossiblePoints === 0
+                ? 0
+                : Math.round((score / totalPossiblePoints) * 100);
+            finalScore.textContent = `${percentage}%`;
+
+            if (percentage >= 90) {
+                resultMessage.textContent = "Outstanding! You're a classical music expert!";
+            } else if (percentage >= 70) {
+                resultMessage.textContent = "Great job! You know your classical music well.";
+            } else if (percentage >= 50) {
+                resultMessage.textContent = "Good effort! Keep studying these pieces.";
+            } else {
+                resultMessage.textContent = "Keep practicing! You'll get better with time.";
+            }
+
+            if (missedPieces.length > 0 && reviewMissedCheckbox.checked && !isReviewRound) {
+                missedTotalElement.textContent = missedPieces.length;
+                reviewSection.style.display = 'block';
+            } else {
+                reviewSection.style.display = 'none';
+            }
+        }
+
+        function restartQuiz() {
+            results.style.display = 'none';
+            quizSection.style.display = 'none';
+            demoBtn.style.display = 'inline-block';
+            document.querySelector('.file-input-section').style.display = 'flex';
+            fileInput.value = '';
+            fileCount.textContent = 'No files selected';
+
+            audioFiles = [];
+            missedPieces = [];
+            score = 0;
+            totalPossiblePoints = 0;
+            missedCount = 0;
+            currentAudioIndex = 0;
+            isReviewRound = false;
+            questionLocked = false;
+
+            if (modeSelect) {
+                modeSelect.disabled = false;
+                quizMode = modeSelect.value;
+            } else {
+                quizMode = 'title';
+            }
+
+            updateModeUI();
+            updateProgress();
+        }
+    });
     </script>
 </body>
 </html>
